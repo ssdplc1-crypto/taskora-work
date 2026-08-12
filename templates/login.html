@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Login — TASKORA WORK{% endblock %}
+{% block content %}
+<div class="auth single">
+<form class="form-card" method="post">
+<h2>Welcome back</h2>
+<label>Email<input type="email" name="email" required></label>
+<label>Password<input type="password" name="password" required></label>
+<button class="btn full" type="submit">Login</button>
+<p class="muted">No account? <a href="{{ url_for('register') }}">Create one</a></p>
+</form>
+</div>
+{% endblock %}

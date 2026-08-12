@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Admin — TASKORA WORK{% endblock %}
+{% block content %}
+<div class="page-head"><div><span class="eyebrow">ADMIN CONTROL CENTER</span><h1>TASKORA overview</h1></div><a class="btn" href="{{ url_for('admin_new_task') }}">+ Create Task</a></div>
+<div class="stats">
+<div class="stat"><span>Workers</span><strong>{{ stats.users }}</strong></div><div class="stat"><span>Activated</span><strong>{{ stats.activated }}</strong></div><div class="stat"><span>Tasks</span><strong>{{ stats.tasks }}</strong></div><div class="stat"><span>Pending submissions</span><strong>{{ stats.submissions }}</strong></div><div class="stat"><span>Pending withdrawals</span><strong>{{ stats.withdrawals }}</strong></div><div class="stat"><span>Activation records</span><strong>₦{{ "{:,}".format(stats.activation_revenue or 0) }}</strong></div>
+</div>
+<div class="actions"><a class="btn ghost" href="{{ url_for('admin_submissions') }}">Review submissions</a><a class="btn ghost" href="{{ url_for('admin_withdrawals') }}">Manage withdrawals</a></div>
+<section class="section"><div class="section-head"><span class="eyebrow">RECENT WITHDRAWALS</span><h2>Latest requests</h2></div>
+<div class="table-wrap"><table><tr><th>User</th><th>Amount</th><th>Bank</th><th>Status</th></tr>{% for w in withdrawals %}<tr><td>{{ w.full_name }}</td><td>₦{{ "{:,}".format(w.amount) }}</td><td>{{ w.bank_name }} · ****{{ w.account_number[-4:] }}</td><td>{{ w.status }}</td></tr>{% else %}<tr><td colspan="4">No requests.</td></tr>{% endfor %}</table></div></section>
+{% endblock %}

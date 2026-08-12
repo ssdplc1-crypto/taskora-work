@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Create Task — TASKORA WORK{% endblock %}
+{% block content %}
+<div class="form-card narrow"><span class="eyebrow">ADMIN</span><h1>Create task</h1>
+<form method="post">
+<label>Title<input name="title" required></label>
+<label>Category<input name="category" placeholder="Data Entry" required></label>
+<label>Description<textarea name="description" rows="8" required></textarea></label>
+<label>Reward (NGN)<input type="number" name="reward" min="1" required></label>
+<label>Deadline<input type="datetime-local" name="deadline"></label>
+<label>Slots<input type="number" name="slots" min="1" value="1" required></label>
+<label>Difficulty<select name="difficulty"><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></label>
+<button class="btn full" type="submit">Publish Task</button>
+</form></div>
+{% endblock %}

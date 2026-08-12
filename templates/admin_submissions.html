@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Submissions — TASKORA WORK{% endblock %}
+{% block content %}
+<div class="page-head"><div><span class="eyebrow">ADMIN</span><h1>Task submissions</h1></div></div>
+<div class="table-wrap"><table><tr><th>Worker</th><th>Task</th><th>Proof</th><th>Reward</th><th>Status</th><th>Action</th></tr>
+{% for s in submissions %}<tr><td>{{ s.full_name }}<br><small>{{ s.email }}</small></td><td>{{ s.title }}</td><td class="proof">{{ s.proof }}</td><td>₦{{ "{:,}".format(s.reward) }}</td><td>{{ s.status }}</td><td>{% if s.status == 'pending' %}<form class="inline" method="post" action="{{ url_for('review_submission', submission_id=s.id, action='approve') }}"><button class="btn small" type="submit">Approve</button></form><form method="post" action="{{ url_for('review_submission', submission_id=s.id, action='reject') }}"><input name="note" placeholder="Reason"><button class="btn small danger" type="submit">Reject</button></form>{% endif %}</td></tr>{% else %}<tr><td colspan="6">No submissions.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

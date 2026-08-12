@@ -1,0 +1,14 @@
+TASKORA WORK MVP
+=================
+
+1. Upload this folder to GitHub.
+2. Deploy on Render using render.yaml, or run locally with:
+   pip install -r requirements.txt
+   python app.py
+3. Add environment variables from .env.example.
+4. For LIVE Flutterwave, use LIVE credentials only after Flutterwave approves your business/account.
+5. Never paste FLW_SECRET_KEY into frontend code or GitHub.
+6. Default admin email: admin@taskora.local
+7. Set ADMIN_PASSWORD before first run.
+
+This MVP does not fake payment success. Activation and withdrawals call Flutterwave server-side when live credentials are configured.

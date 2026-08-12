@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Withdrawals — TASKORA WORK{% endblock %}
+{% block content %}
+<div class="page-head"><div><span class="eyebrow">ADMIN</span><h1>Weekly withdrawals</h1></div></div>
+<div class="table-wrap"><table><tr><th>User</th><th>Amount</th><th>Net</th><th>Bank</th><th>Status</th><th>Action</th></tr>
+{% for w in withdrawals %}<tr><td>{{ w.full_name }}<br><small>{{ w.email }}</small></td><td>₦{{ "{:,}".format(w.amount) }}</td><td>₦{{ "{:,}".format(w.net_amount) }}</td><td>{{ w.bank_name }}<br>{{ w.account_number }}<br>{{ w.account_name or "" }}</td><td>{{ w.status }}</td><td>{% if w.status == 'pending' %}<form method="post" action="{{ url_for('admin_pay_withdrawal', withdrawal_id=w.id) }}"><button class="btn small" type="submit">Send to Flutterwave</button></form>{% endif %}</td></tr>{% else %}<tr><td colspan="6">No withdrawals.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

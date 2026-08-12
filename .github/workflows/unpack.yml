@@ -1,0 +1,34 @@
+name: Extract TASKORA WORK
+
+on:
+  push:
+    paths:
+      - "TASKORA_WORK_MVP_v1.zip"
+      - ".github/workflows/unpack.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract project
+        run: |
+          unzip -o TASKORA_WORK_MVP_v1.zip -d extracted
+          cp -r extracted/TASKORA_WORK_MVP_v1/* .
+          cp -r extracted/TASKORA_WORK_MVP_v1/.[!.]* . 2>/dev/null || true
+          rm -rf extracted
+          rm -f TASKORA_WORK_MVP_v1.zip
+
+      - name: Commit extracted project
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Extract TASKORA WORK project" || exit 0
+          git push

@@ -19,9 +19,9 @@ jobs:
 
       - name: Extract project
         run: |
+          rm -rf extracted
           unzip -o TASKORA_WORK_MVP_v1.zip -d extracted
-          cp -r extracted/TASKORA_WORK_MVP_v1/* .
-          cp -r extracted/TASKORA_WORK_MVP_v1/.[!.]* . 2>/dev/null || true
+          cp -a extracted/. .
           rm -rf extracted
           rm -f TASKORA_WORK_MVP_v1.zip
 

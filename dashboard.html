@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — TASKORA WORK{% endblock %}
+{% block content %}
+<div class="page-head"><div><span class="eyebrow">WORKER DASHBOARD</span><h1>Hello, {{ user.full_name.split()[0] }} 👋</h1></div>{% if not user.activated %}<a class="btn" href="{{ url_for('activate') }}">Activate ₦3,000</a>{% endif %}</div>
+{% if not user.activated %}
+<div class="notice"><strong>Account not activated.</strong> Activate your worker account to apply for tasks and withdraw earnings.</div>
+{% endif %}
+<div class="stats">
+  <div class="stat"><span>Available</span><strong>₦{{ "{:,}".format(balance) }}</strong></div>
+  <div class="stat"><span>Pending</span><strong>₦{{ "{:,}".format(pending) }}</strong></div>
+  <div class="stat"><span>Minimum withdrawal</span><strong>₦{{ "{:,}".format(min_withdrawal) }}</strong></div>
+</div>
+<section class="section">
+<div class="section-head"><span class="eyebrow">TASK MARKETPLACE</span><h2>Tasks you can work on</h2></div>
+<div class="grid two">
+{% for task in tasks %}
+<a class="task-card link-card" href="{{ url_for('task_detail', task_id=task.id) }}">
+<div class="pill">{{ task.category }}</div><h3>{{ task.title }}</h3><p>{{ task.description[:120] }}{% if task.description|length > 120 %}…{% endif %}</p>
+<div class="task-bottom"><strong>₦{{ "{:,}".format(task.reward) }}</strong><span>{{ task.slots }} slots</span></div>
+</a>
+{% else %}<div class="empty">No open tasks yet.</div>{% endfor %}
+</div></section>
+<section class="section">
+<div class="section-head"><span class="eyebrow">RECENT ACTIVITY</span><h2>Your submissions</h2></div>
+<div class="table-wrap"><table><tr><th>Task</th><th>Status</th><th>Date</th></tr>
+{% for s in submissions %}<tr><td>{{ s.title }}</td><td><span class="status {{ s.status }}">{{ s.status }}</span></td><td>{{ s.submitted_at[:10] }}</td></tr>{% else %}<tr><td colspan="3">No submissions yet.</td></tr>{% endfor %}
+</table></div></section>
+{% endblock %}

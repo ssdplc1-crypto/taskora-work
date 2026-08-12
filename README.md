@@ -73,9 +73,16 @@ Default admin email is `admin@taskora.local`. Set `ADMIN_PASSWORD` before first 
 
 Do not mark a withdrawal as paid merely because a transfer request was accepted.
 
+## Production database
+
+The deployed Render service is configured to use PostgreSQL through `DATABASE_URL`. The included `render.yaml` provisions a Render Postgres database in Virginia and wires its internal connection string into the web service. Render documents `fromDatabase.property: connectionString` for this setup.
+
+For an existing Render service, sync the Blueprint (or manually create the database and add its internal connection string as `DATABASE_URL`) before deploying this version. The app creates its PostgreSQL schema automatically on startup. Do not point the new version at the old SQLite file.
+
+SQLite remains available only when `DATABASE_URL` is blank, which is useful for local testing.
+
 ## MVP limitations to address before scale
 
-- Replace SQLite with PostgreSQL.
 - Add bank-account name enquiry/verification through the chosen provider.
 - Add rate limiting and CSRF protection middleware.
 - Add stronger KYC/identity verification.
@@ -99,3 +106,32 @@ taskora-work-mvp/
 ├── templates/
 └── static/
 ```
+
+## TASKORA WORK v2 workflow additions
+
+This revision wires the MVP workflow end-to-end:
+
+- Worker registration/login/logout.
+- Activation payment flow with server-side Flutterwave verification.
+- Admin task creation, slot/deadline enforcement, worker submission and approval/rejection.
+- Approved-task earnings ledger and wallet balance calculation.
+- Friday-only withdrawal requests using Africa/Lagos time, minimum ₦5,000, duplicate-request protection, and verified-bank requirement.
+- Admin worker/bank verification controls.
+- Admin withdrawal approval, rejection, Flutterwave transfer submission and provider-status refresh.
+
+### Required Render environment variables
+
+Set these in the new Render service before using real payments:
+
+- `FLASK_SECRET_KEY` — strong random secret.
+- `ADMIN_PASSWORD` — strong admin password.
+- `BASE_URL` — `https://taskora-work.onrender.com` (or your custom domain).
+- `COOKIE_SECURE=1`.
+- `FLW_SECRET_KEY` — approved Flutterwave live secret key.
+- `FLW_WEBHOOK_HASH` — the webhook verification hash configured in Flutterwave.
+
+Do not put live credentials in GitHub.
+
+### Important production note
+
+The current MVP uses SQLite. Render's free web service filesystem is not a durable production database. For a real public launch, attach a new PostgreSQL database and migrate the application before relying on user balances, task records or withdrawals for real money.

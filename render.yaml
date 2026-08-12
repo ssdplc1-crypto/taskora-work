@@ -2,18 +2,34 @@ services:
   - type: web
     name: taskora-work
     runtime: python
+    region: virginia
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
+    healthCheckPath: /health
     envVars:
       - key: FLASK_SECRET_KEY
         generateValue: true
       - key: ADMIN_PASSWORD
         sync: false
       - key: BASE_URL
-        sync: false
+        value: https://taskora-work.onrender.com
       - key: COOKIE_SECURE
         value: "1"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: taskora-work-db
+          property: connectionString
+      - key: PGSSLMODE
+        value: require
       - key: FLW_SECRET_KEY
         sync: false
       - key: FLW_WEBHOOK_HASH
         sync: false
+
+databases:
+  - name: taskora-work-db
+    databaseName: taskora_work
+    user: taskora_work
+    plan: free
+    region: virginia
+    postgresMajorVersion: "18"

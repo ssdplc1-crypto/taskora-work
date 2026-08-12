@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="description" content="TASKORA WORK - Learn, Work, Earn.">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <title>{% block title %}TASKORA WORK{% endblock %}</title>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="{{ url_for('index') }}"><span class="brandmark">T</span> TASKORA <b>WORK</b></a>
+  <nav>
+    {% if current_user %}
+      {% if current_user.role == 'admin' %}
+        <a href="{{ url_for('admin_dashboard') }}">Admin</a>
+        <a href="{{ url_for('admin_submissions') }}">Submissions</a>
+        <a href="{{ url_for('admin_withdrawals') }}">Withdrawals</a>
+        <a href="{{ url_for('admin_users') }}">Workers</a>
+      {% else %}
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('tasks') }}">Tasks</a>
+        <a href="{{ url_for('wallet') }}">Wallet</a>
+        <a href="{{ url_for('profile') }}">Profile</a>
+      {% endif %}
+      <a class="btn small" href="{{ url_for('logout') }}">Logout</a>
+    {% else %}
+      <a href="{{ url_for('login') }}">Login</a>
+      <a class="btn small" href="{{ url_for('register') }}">Get Started</a>
+    {% endif %}
+  </nav>
+</header>
+<main class="container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert {{ category }}">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+<footer><div>TASKORA WORK · Learn • Work • Earn</div><div>© 2026 TASKORA</div></footer>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('/static/sw.js').catch(()=>{});}</script></body>
+</html>

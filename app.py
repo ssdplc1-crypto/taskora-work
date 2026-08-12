@@ -1,8 +1,18 @@
 import os
 import sqlite3
+import re
+
+try:
+    import psycopg2
+    from psycopg2.extras import DictCursor
+except ImportError:
+    psycopg2 = None
+    DictCursor = None
 import secrets
 import uuid
+import json
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 from functools import wraps
 
 import requests
@@ -11,6 +21,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "taskora.db")
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "CHANGE_THIS_IN_PRODUCTION")
@@ -24,119 +35,160 @@ BASE_URL = os.environ.get("BASE_URL", "http://localhost:5000").rstrip("/")
 ACTIVATION_FEE = 3000
 MIN_WITHDRAWAL = 5000
 CURRENCY = "NGN"
+LAGOS_TZ = ZoneInfo("Africa/Lagos")
+
+
+class DBConnection:
+    """Database adapter: SQLite for local development, PostgreSQL on Render."""
+    def __init__(self):
+        self.is_postgres = bool(DATABASE_URL)
+        if self.is_postgres:
+            if psycopg2 is None:
+                raise RuntimeError("DATABASE_URL is set but psycopg2-binary is not installed.")
+            url = DATABASE_URL
+            if url.startswith("postgres://"):
+                url = "postgresql://" + url[len("postgres://"):]
+            self.conn = psycopg2.connect(
+                url,
+                sslmode=os.environ.get("PGSSLMODE", "require"),
+                cursor_factory=DictCursor,
+            )
+        else:
+            self.conn = sqlite3.connect(DB_PATH)
+            self.conn.row_factory = sqlite3.Row
+            self.conn.execute("PRAGMA foreign_keys = ON")
+
+    def _sql(self, sql):
+        if not self.is_postgres:
+            return sql
+        sql = re.sub(r"INSERT\s+OR\s+IGNORE\s+INTO", "INSERT INTO", sql, flags=re.I)
+        sql = sql.replace("?", "%s")
+        if re.search(r"INSERT\s+INTO", sql, flags=re.I) and "ON CONFLICT" not in sql.upper() and re.search(r"INSERT\s+INTO\s+\w+\s*\([^)]*\)\s*VALUES", sql, flags=re.I):
+            sql += " ON CONFLICT DO NOTHING"
+        return sql
+
+    def execute(self, sql, params=()):
+        if self.is_postgres:
+            cur = self.conn.cursor()
+            cur.execute(self._sql(sql), params)
+            return cur
+        return self.conn.execute(sql, params)
+
+    def executescript(self, sql):
+        if self.is_postgres:
+            cur = self.conn.cursor()
+            for statement in [x.strip() for x in sql.split(";") if x.strip()]:
+                cur.execute(statement)
+            return cur
+        return self.conn.executescript(sql)
+
+    def commit(self):
+        self.conn.commit()
+
+    def rollback(self):
+        self.conn.rollback()
+
+    def close(self):
+        self.conn.close()
 
 
 def db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    return conn
+    return DBConnection()
 
 
 def init_db():
     conn = db()
-    conn.executescript("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        full_name TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        phone TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'worker',
-        activated INTEGER NOT NULL DEFAULT 0,
-        activation_tx_ref TEXT,
-        activation_transaction_id TEXT,
-        created_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS bank_accounts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        bank_code TEXT NOT NULL,
-        bank_name TEXT NOT NULL,
-        account_number TEXT NOT NULL,
-        account_name TEXT,
-        is_verified INTEGER NOT NULL DEFAULT 0,
-        created_at TEXT NOT NULL,
-        UNIQUE(user_id, account_number),
-        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS tasks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        category TEXT NOT NULL,
-        description TEXT NOT NULL,
-        reward INTEGER NOT NULL,
-        deadline TEXT,
-        slots INTEGER NOT NULL DEFAULT 1,
-        difficulty TEXT NOT NULL DEFAULT 'Beginner',
-        status TEXT NOT NULL DEFAULT 'open',
-        created_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS submissions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        task_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
-        proof TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'pending',
-        reviewer_note TEXT,
-        submitted_at TEXT NOT NULL,
-        reviewed_at TEXT,
-        FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE,
-        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS ledger (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        kind TEXT NOT NULL,
-        amount INTEGER NOT NULL,
-        reference TEXT UNIQUE NOT NULL,
-        description TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'available',
-        created_at TEXT NOT NULL,
-        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS withdrawals (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        bank_account_id INTEGER NOT NULL,
-        amount INTEGER NOT NULL,
-        fee INTEGER NOT NULL DEFAULT 0,
-        net_amount INTEGER NOT NULL,
-        reference TEXT UNIQUE NOT NULL,
-        status TEXT NOT NULL DEFAULT 'pending',
-        provider_transfer_id TEXT,
-        note TEXT,
-        requested_at TEXT NOT NULL,
-        processed_at TEXT,
-        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY(bank_account_id) REFERENCES bank_accounts(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS payment_events (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        tx_ref TEXT UNIQUE NOT NULL,
-        user_id INTEGER,
-        event_type TEXT NOT NULL,
-        transaction_id TEXT,
-        amount INTEGER,
-        currency TEXT,
-        raw_json TEXT,
-        created_at TEXT NOT NULL
-    );
-    """)
-    # Create an admin account only if none exists. Change the password immediately.
+    if conn.is_postgres:
+        conn.executescript("""
+        CREATE TABLE IF NOT EXISTS users (
+            id BIGSERIAL PRIMARY KEY,
+            full_name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, phone TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'worker', activated INTEGER NOT NULL DEFAULT 0,
+            activation_tx_ref TEXT, activation_transaction_id TEXT, created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS bank_accounts (
+            id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            bank_code TEXT NOT NULL, bank_name TEXT NOT NULL, account_number TEXT NOT NULL, account_name TEXT,
+            is_verified INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, UNIQUE(user_id, account_number)
+        );
+        CREATE TABLE IF NOT EXISTS tasks (
+            id BIGSERIAL PRIMARY KEY, title TEXT NOT NULL, category TEXT NOT NULL, description TEXT NOT NULL,
+            reward INTEGER NOT NULL, deadline TEXT, slots INTEGER NOT NULL DEFAULT 1,
+            difficulty TEXT NOT NULL DEFAULT 'Beginner', status TEXT NOT NULL DEFAULT 'open', created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS submissions (
+            id BIGSERIAL PRIMARY KEY, task_id BIGINT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+            user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE, proof TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending', reviewer_note TEXT, submitted_at TEXT NOT NULL, reviewed_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS ledger (
+            id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            kind TEXT NOT NULL, amount INTEGER NOT NULL, reference TEXT UNIQUE NOT NULL, description TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'available', created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS withdrawals (
+            id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            bank_account_id BIGINT NOT NULL REFERENCES bank_accounts(id), amount INTEGER NOT NULL, fee INTEGER NOT NULL DEFAULT 0,
+            net_amount INTEGER NOT NULL, reference TEXT UNIQUE NOT NULL, status TEXT NOT NULL DEFAULT 'pending',
+            provider_transfer_id TEXT, note TEXT, requested_at TEXT NOT NULL, processed_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS payment_events (
+            id BIGSERIAL PRIMARY KEY, tx_ref TEXT UNIQUE NOT NULL, user_id BIGINT, event_type TEXT NOT NULL,
+            transaction_id TEXT, amount INTEGER, currency TEXT, raw_json TEXT, created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_submissions_user ON submissions(user_id);
+        CREATE INDEX IF NOT EXISTS idx_submissions_task ON submissions(task_id);
+        CREATE INDEX IF NOT EXISTS idx_ledger_user ON ledger(user_id);
+        CREATE INDEX IF NOT EXISTS idx_withdrawals_user ON withdrawals(user_id);
+        """)
+    else:
+        conn.executescript("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, full_name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, phone TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'worker', activated INTEGER NOT NULL DEFAULT 0,
+            activation_tx_ref TEXT, activation_transaction_id TEXT, created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS bank_accounts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, bank_code TEXT NOT NULL, bank_name TEXT NOT NULL,
+            account_number TEXT NOT NULL, account_name TEXT, is_verified INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL,
+            UNIQUE(user_id, account_number), FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        CREATE TABLE IF NOT EXISTS tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, category TEXT NOT NULL, description TEXT NOT NULL,
+            reward INTEGER NOT NULL, deadline TEXT, slots INTEGER NOT NULL DEFAULT 1, difficulty TEXT NOT NULL DEFAULT 'Beginner',
+            status TEXT NOT NULL DEFAULT 'open', created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS submissions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER NOT NULL, user_id INTEGER NOT NULL, proof TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending', reviewer_note TEXT, submitted_at TEXT NOT NULL, reviewed_at TEXT,
+            FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        CREATE TABLE IF NOT EXISTS ledger (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, kind TEXT NOT NULL, amount INTEGER NOT NULL,
+            reference TEXT UNIQUE NOT NULL, description TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'available', created_at TEXT NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        CREATE TABLE IF NOT EXISTS withdrawals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, bank_account_id INTEGER NOT NULL,
+            amount INTEGER NOT NULL, fee INTEGER NOT NULL DEFAULT 0, net_amount INTEGER NOT NULL, reference TEXT UNIQUE NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending', provider_transfer_id TEXT, note TEXT, requested_at TEXT NOT NULL, processed_at TEXT,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE, FOREIGN KEY(bank_account_id) REFERENCES bank_accounts(id)
+        );
+        CREATE TABLE IF NOT EXISTS payment_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, tx_ref TEXT UNIQUE NOT NULL, user_id INTEGER, event_type TEXT NOT NULL,
+            transaction_id TEXT, amount INTEGER, currency TEXT, raw_json TEXT, created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_submissions_user ON submissions(user_id);
+        CREATE INDEX IF NOT EXISTS idx_submissions_task ON submissions(task_id);
+        CREATE INDEX IF NOT EXISTS idx_ledger_user ON ledger(user_id);
+        CREATE INDEX IF NOT EXISTS idx_withdrawals_user ON withdrawals(user_id);
+        """)
     admin = conn.execute("SELECT id FROM users WHERE role='admin' LIMIT 1").fetchone()
     if not admin:
         conn.execute(
             "INSERT INTO users(full_name,email,phone,password_hash,role,activated,created_at) VALUES(?,?,?,?,?,?,?)",
             ("TASKORA Admin", "admin@taskora.local", "0000000000",
-             generate_password_hash(os.environ.get("ADMIN_PASSWORD", "ChangeMe123!")),
-             "admin", 1, now())
+             generate_password_hash(os.environ.get("ADMIN_PASSWORD", "ChangeMe123!")), "admin", 1, now())
         )
     conn.commit()
     conn.close()
@@ -144,6 +196,22 @@ def init_db():
 
 def now():
     return datetime.now(timezone.utc).isoformat()
+
+
+def lagos_now():
+    return datetime.now(LAGOS_TZ)
+
+
+def is_friday():
+    return lagos_now().weekday() == 4
+
+
+def valid_amount(value):
+    try:
+        amount = int(str(value))
+        return amount if amount > 0 else 0
+    except (TypeError, ValueError):
+        return 0
 
 
 def current_user():
@@ -221,6 +289,19 @@ def flw_post(path, payload):
     return data
 
 
+def flw_get(path):
+    if not FLW_SECRET_KEY:
+        raise RuntimeError("FLW_SECRET_KEY is not configured.")
+    r = requests.get("https://api.flutterwave.com/v3" + path, headers=flw_headers(), timeout=30)
+    try:
+        data = r.json()
+    except Exception:
+        data = {"status": "error", "message": r.text}
+    if r.status_code >= 400 or data.get("status") == "error":
+        raise RuntimeError(data.get("message", "Flutterwave request failed."))
+    return data
+
+
 @app.context_processor
 def inject_globals():
     return {
@@ -260,7 +341,7 @@ def register():
             user = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
             session["user_id"] = user["id"]
             return redirect(url_for("dashboard"))
-        except sqlite3.IntegrityError:
+        except Exception:
             flash("Email or phone number is already registered.", "error")
             return render_template("register.html")
         finally:
@@ -481,9 +562,19 @@ def submit_task(task_id):
         "SELECT id FROM submissions WHERE task_id=? AND user_id=? AND status IN ('pending','approved')",
         (task_id, u["id"])
     ).fetchone()
-    if not task or existing:
+    active_slots = conn.execute(
+        "SELECT COUNT(*) FROM submissions WHERE task_id=? AND status IN ('pending','approved')",
+        (task_id,)
+    ).fetchone()[0] if task else 0
+    deadline_passed = False
+    if task and task["deadline"]:
+        try:
+            deadline_passed = datetime.fromisoformat(task["deadline"]).replace(tzinfo=LAGOS_TZ) < lagos_now()
+        except ValueError:
+            deadline_passed = False
+    if not task or existing or active_slots >= task["slots"] or deadline_passed:
         conn.close()
-        flash("Task unavailable or already submitted.", "error")
+        flash("Task unavailable, full, expired, or already submitted.", "error")
         return redirect(url_for("tasks"))
 
     conn.execute(
@@ -534,7 +625,7 @@ def profile():
                 )
                 conn.commit()
                 flash("Bank account saved. Verify the account name before withdrawing.", "success")
-            except sqlite3.IntegrityError:
+            except Exception:
                 flash("That bank account is already saved.", "error")
     banks = conn.execute("SELECT * FROM bank_accounts WHERE user_id=? ORDER BY id DESC", (u["id"],)).fetchall()
     conn.close()
@@ -554,7 +645,7 @@ def withdraw():
         return redirect(url_for("wallet"))
 
     # Friday-only request window. Admin can process at any time after review.
-    if datetime.now(timezone.utc).weekday() != 4:
+    if not is_friday():
         flash("Weekly withdrawal requests open on Friday. Your balance remains safe in your wallet.", "error")
         return redirect(url_for("wallet"))
 
@@ -563,6 +654,20 @@ def withdraw():
     conn.close()
     if not bank:
         flash("Select a valid bank account first.", "error")
+        return redirect(url_for("wallet"))
+    if not bank["is_verified"]:
+        flash("Your bank account must be verified before withdrawal.", "error")
+        return redirect(url_for("wallet"))
+
+    # Prevent duplicate requests while another payout is still being processed.
+    conn = db()
+    existing_wd = conn.execute(
+        "SELECT id FROM withdrawals WHERE user_id=? AND status IN ('pending','processing') LIMIT 1",
+        (u["id"],)
+    ).fetchone()
+    conn.close()
+    if existing_wd:
+        flash("You already have a withdrawal being processed.", "error")
         return redirect(url_for("wallet"))
 
     balance = available_balance(u["id"])
@@ -602,6 +707,8 @@ def admin_dashboard():
         "activation_revenue": conn.execute(
             "SELECT COALESCE(SUM(amount),0) FROM payment_events WHERE event_type='activation_verified'"
         ).fetchone()[0],
+        "paid_withdrawals": conn.execute("SELECT COUNT(*) FROM withdrawals WHERE status='paid'").fetchone()[0],
+        "total_earnings": conn.execute("SELECT COALESCE(SUM(amount),0) FROM ledger WHERE kind='earning' AND status='available'").fetchone()[0],
     }
     recent_withdrawals = conn.execute("""
         SELECT w.*, u.full_name, u.email, b.bank_name,b.account_number
@@ -742,9 +849,107 @@ def admin_pay_withdrawal(withdrawal_id):
     return redirect(url_for("admin_withdrawals"))
 
 
+
+@app.route("/admin/users")
+@admin_required
+def admin_users():
+    conn = db()
+    users = conn.execute("SELECT * FROM users WHERE role='worker' ORDER BY id DESC").fetchall()
+    banks = conn.execute("SELECT * FROM bank_accounts ORDER BY id DESC").fetchall()
+    conn.close()
+    return render_template("admin_users.html", users=users, banks=banks)
+
+
+@app.route("/admin/banks/<int:bank_id>/verify", methods=["POST"])
+@admin_required
+def admin_verify_bank(bank_id):
+    conn = db()
+    bank = conn.execute("SELECT id FROM bank_accounts WHERE id=?", (bank_id,)).fetchone()
+    if not bank:
+        conn.close()
+        flash("Bank account not found.", "error")
+        return redirect(url_for("admin_users"))
+    conn.execute("UPDATE bank_accounts SET is_verified=1 WHERE id=?", (bank_id,))
+    conn.commit()
+    conn.close()
+    flash("Bank account verified.", "success")
+    return redirect(url_for("admin_users"))
+
+
+@app.route("/admin/users/<int:user_id>/toggle-activation", methods=["POST"])
+@admin_required
+def admin_toggle_activation(user_id):
+    conn = db()
+    user = conn.execute("SELECT activated FROM users WHERE id=? AND role='worker'", (user_id,)).fetchone()
+    if not user:
+        conn.close()
+        flash("Worker not found.", "error")
+        return redirect(url_for("admin_users"))
+    new_value = 0 if user["activated"] else 1
+    conn.execute("UPDATE users SET activated=? WHERE id=?", (new_value, user_id))
+    conn.commit()
+    conn.close()
+    flash("Worker activation status updated.", "success")
+    return redirect(url_for("admin_users"))
+
+
+@app.route("/admin/withdrawals/<int:withdrawal_id>/reject", methods=["POST"])
+@admin_required
+def admin_reject_withdrawal(withdrawal_id):
+    conn = db()
+    w = conn.execute("SELECT status FROM withdrawals WHERE id=?", (withdrawal_id,)).fetchone()
+    if not w or w["status"] != "pending":
+        conn.close()
+        flash("Withdrawal is not pending.", "error")
+        return redirect(url_for("admin_withdrawals"))
+    note = request.form.get("note", "Withdrawal rejected by admin.").strip()[:500]
+    conn.execute("UPDATE withdrawals SET status='rejected', note=?, processed_at=? WHERE id=?", (note, now(), withdrawal_id))
+    conn.commit()
+    conn.close()
+    flash("Withdrawal rejected. The amount remains available to the worker.", "success")
+    return redirect(url_for("admin_withdrawals"))
+
+
+@app.route("/admin/withdrawals/<int:withdrawal_id>/refresh", methods=["POST"])
+@admin_required
+def admin_refresh_withdrawal(withdrawal_id):
+    conn = db()
+    w = conn.execute("SELECT * FROM withdrawals WHERE id=?", (withdrawal_id,)).fetchone()
+    conn.close()
+    if not w or not w["provider_transfer_id"]:
+        flash("No provider transfer ID is available.", "error")
+        return redirect(url_for("admin_withdrawals"))
+    try:
+        result = flw_get(f"/transfers/{w['provider_transfer_id']}")
+        data = result.get("data") or {}
+        status = str(data.get("status") or data.get("transfer_status") or "").lower()
+        new_status = None
+        if status in {"successful", "success", "completed"}:
+            new_status = "paid"
+        elif status in {"failed", "cancelled", "canceled", "reversed"}:
+            new_status = "failed"
+        if new_status:
+            conn = db()
+            conn.execute("UPDATE withdrawals SET status=?, note=?, processed_at=? WHERE id=?", (new_status, f"Provider status: {status}", now(), withdrawal_id))
+            conn.commit()
+            conn.close()
+            flash(f"Withdrawal status updated to {new_status}.", "success")
+        else:
+            flash(f"Provider status is {status or 'unknown'}; no final status change made.", "success")
+    except Exception as e:
+        flash(str(e), "error")
+    return redirect(url_for("admin_withdrawals"))
+
 @app.route("/health")
 def health():
-    return jsonify({"status":"ok","service":"taskora-work"})
+    try:
+        conn = db()
+        conn.execute("SELECT 1").fetchone()
+        backend = "postgresql" if conn.is_postgres else "sqlite"
+        conn.close()
+        return jsonify({"status": "ok", "service": "taskora-work", "database": backend})
+    except Exception:
+        return jsonify({"status": "error", "service": "taskora-work", "database": "unavailable"}), 503
 
 
 @app.errorhandler(404)

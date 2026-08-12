@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Tasks — TASKORA WORK{% endblock %}
+{% block content %}
+<div class="page-head"><div><span class="eyebrow">TASK MARKETPLACE</span><h1>Find work</h1></div></div>
+<div class="grid two">
+{% for task in tasks %}
+<a class="task-card link-card" href="{{ url_for('task_detail', task_id=task.id) }}">
+<div class="pill">{{ task.category }}</div><h3>{{ task.title }}</h3><p>{{ task.description }}</p>
+<div class="task-bottom"><strong>₦{{ "{:,}".format(task.reward) }}</strong><span>{{ task.difficulty }} · {{ task.slots }} slots</span></div>
+</a>
+{% else %}<div class="empty">No tasks available.</div>{% endfor %}
+</div>
+{% endblock %}

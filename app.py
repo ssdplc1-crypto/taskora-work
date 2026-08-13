@@ -33,6 +33,7 @@ FLW_SECRET_KEY = os.environ.get("FLW_SECRET_KEY", "")
 FLW_WEBHOOK_HASH = os.environ.get("FLW_WEBHOOK_HASH", "")
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:5000").rstrip("/")
 ACTIVATION_FEE = 3000
+FLUTTERWAVE_PAYMENT_LINK = os.environ.get("FLUTTERWAVE_PAYMENT_LINK", "https://flutterwave.com/pay/io7rwhtgumk4").strip()
 MIN_WITHDRAWAL = 5000
 CURRENCY = "NGN"
 LAGOS_TZ = ZoneInfo("Africa/Lagos")
@@ -409,43 +410,39 @@ def activate_pay():
     if u["activated"]:
         return redirect(url_for("dashboard"))
 
-    tx_ref = f"TASKORA-ACT-{u['id']}-{uuid.uuid4().hex[:12]}"
-    payload = {
-        "tx_ref": tx_ref,
-        "amount": ACTIVATION_FEE,
-        "currency": CURRENCY,
-        "redirect_url": f"{BASE_URL}{url_for('activation_callback')}",
-        "payment_options": "card,banktransfer,ussd",
-        "customer": {
-            "email": u["email"],
-            "phonenumber": u["phone"],
-            "name": u["full_name"]
-        },
-        "customizations": {
-            "title": "TASKORA WORK Activation",
-            "description": "Worker account activation fee"
-        },
-        "meta": {
-            "user_id": u["id"],
-            "purpose": "account_activation"
-        }
-    }
-    try:
-        result = flw_post("/payments", payload)
-    except Exception as e:
-        flash(str(e), "error")
+    if not FLUTTERWAVE_PAYMENT_LINK:
+        flash("Flutterwave payment link is not configured.", "error")
         return redirect(url_for("activate"))
 
-    conn = db()
-    conn.execute("UPDATE users SET activation_tx_ref=? WHERE id=?", (tx_ref, u["id"]))
-    conn.execute(
-        "INSERT OR IGNORE INTO payment_events(tx_ref,user_id,event_type,amount,currency,raw_json,created_at) VALUES(?,?,?,?,?,?,?)",
-        (tx_ref, u["id"], "activation_started", ACTIVATION_FEE, CURRENCY, json.dumps(result), now())
-    )
-    conn.commit()
-    conn.close()
-    return redirect(result["data"]["link"])
+    tx_ref = f"TASKORA-ACT-{u['id']}-{uuid.uuid4().hex[:12]}"
 
+    conn = db()
+    try:
+        conn.execute(
+            "UPDATE users SET activation_tx_ref=? WHERE id=?",
+            (tx_ref, u["id"])
+        )
+        conn.execute(
+            "INSERT OR IGNORE INTO payment_events(tx_ref,user_id,event_type,amount,currency,raw_json,created_at) "
+            "VALUES(?,?,?,?,?,?,?)",
+            (
+                tx_ref,
+                u["id"],
+                "activation_started",
+                ACTIVATION_FEE,
+                CURRENCY,
+                json.dumps({
+                    "payment_link": FLUTTERWAVE_PAYMENT_LINK,
+                    "amount": ACTIVATION_FEE
+                }),
+                now()
+            )
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return redirect(FLUTTERWAVE_PAYMENT_LINK)
 
 @app.route("/activate/callback")
 @login_required

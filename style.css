@@ -42,3 +42,419 @@ footer{gap:10px;flex-direction:column;font-size:12px}
 .container{padding-left:13px;padding-right:13px}.brand{font-size:15.5px}.brandmark{width:28px;height:28px;margin-right:5px}.topbar{padding-left:3.5%;padding-right:3.5%}.hero h1{font-size:39px}.section h2{font-size:28px}.page-head h1{font-size:33px}.stat strong{font-size:27px}.btn{min-height:44px}.btn.small{min-height:40px}
 }
 p,h1,h2,h3,h4,h5,h6,td,th,label,.notice,.alert{overflow-wrap:anywhere}
+/* =========================================================
+   TASKORA WORK — RESPONSIVE / MOBILE POLISH FIX
+   Add this block at the VERY END of style.css
+   ========================================================= */
+
+/* Prevent any page-wide horizontal movement */
+html {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+body {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+/* Keep every element inside the viewport */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+img,
+svg,
+video,
+canvas,
+iframe {
+  max-width: 100%;
+}
+
+/* Main layout containers must never create horizontal overflow */
+.container,
+.topbar,
+.page-head,
+.section,
+.hero,
+.detail,
+.form-card,
+.card,
+.grid,
+.task-grid,
+.stats,
+.stat-grid,
+.actions,
+.footer {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Main container */
+.container {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Cards should shrink instead of pushing the page sideways */
+.card,
+.stat,
+.form-card,
+.task-card,
+.hero-card,
+.detail-card {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Long text must wrap */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+a,
+label,
+.notice,
+.alert,
+.flash,
+.card,
+.task-card,
+.detail,
+td,
+th {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+/* Tables stay inside their container */
+table {
+  width: 100%;
+  max-width: 100%;
+  border-collapse: collapse;
+}
+
+.table-wrap,
+.table-container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Forms must never become wider than the screen */
+input,
+select,
+textarea,
+button {
+  max-width: 100%;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+}
+
+/* =========================================================
+   NAVBAR
+   ========================================================= */
+
+.topbar {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.topbar > * {
+  min-width: 0;
+}
+
+.brand,
+.brandmark,
+.nav,
+.topbar nav {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.nav {
+  flex-wrap: wrap;
+}
+
+.nav a {
+  white-space: nowrap;
+}
+
+/* =========================================================
+   DASHBOARD SPACING + TYPOGRAPHY
+   ========================================================= */
+
+.page-head h1 {
+  font-size: clamp(30px, 5vw, 42px);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+}
+
+.section h2 {
+  font-size: clamp(25px, 4vw, 34px);
+  line-height: 1.15;
+}
+
+.section h3 {
+  font-size: clamp(20px, 3vw, 27px);
+}
+
+body {
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+/* Make small text slightly easier to read */
+label,
+.notice,
+.alert,
+.stat small,
+.card small,
+table {
+  font-size: 14px;
+}
+
+/* =========================================================
+   STAT / BALANCE CARDS
+   ========================================================= */
+
+.stats,
+.stat-grid {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.stats > *,
+.stat-grid > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 700px) {
+
+  body {
+    font-size: 15px;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 100%;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .topbar {
+    height: auto;
+    min-height: 64px;
+    padding: 10px 16px;
+    gap: 10px;
+  }
+
+  .brand {
+    font-size: 15px;
+  }
+
+  .brandmark {
+    width: 30px;
+    height: 30px;
+  }
+
+  .nav {
+    gap: 6px;
+  }
+
+  .nav a {
+    font-size: 13px;
+    padding: 7px 9px;
+  }
+
+  .page-head {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .page-head h1 {
+    font-size: 32px;
+  }
+
+  .section {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .section h2 {
+    font-size: 27px;
+  }
+
+  .stats,
+  .stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px;
+  }
+
+  .stats > *,
+  .stat-grid > * {
+    width: 100%;
+  }
+
+  .stat {
+    padding: 16px;
+    min-width: 0;
+  }
+
+  .stat strong {
+    font-size: 22px;
+  }
+
+  .grid,
+  .task-grid {
+    grid-template-columns: 1fr !important;
+    width: 100%;
+  }
+
+  .hero,
+  .detail {
+    grid-template-columns: 1fr !important;
+    width: 100%;
+  }
+
+  .actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .actions > * {
+    max-width: 100%;
+  }
+
+  .form-card {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .notice,
+  .alert {
+    width: 100%;
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  footer {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+
+  .container {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .topbar {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .page-head h1 {
+    font-size: 29px;
+  }
+
+  .section h2 {
+    font-size: 25px;
+  }
+
+  .stats,
+  .stat-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px;
+  }
+
+  .stat {
+    padding: 14px 12px;
+  }
+
+  .stat strong {
+    font-size: 20px;
+  }
+
+  .stat small,
+  label,
+  .notice,
+  .alert {
+    font-size: 13px;
+  }
+}
+
+/* Extra-small phones */
+@media (max-width: 360px) {
+
+  .container {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .topbar {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .page-head h1 {
+    font-size: 27px;
+  }
+
+  .section h2 {
+    font-size: 23px;
+  }
+
+  .stats,
+  .stat-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* =========================================================
+   IMPORTANT: stop accidental horizontal transforms
+   ========================================================= */
+
+main,
+header,
+footer,
+section,
+article,
+nav,
+.container,
+.topbar {
+  transform: none;
+  max-width: 100%;
+}
+
+/* Never allow the document itself to become wider than viewport */
+body > * {
+  max-width: 100%;
+  min-width: 0;
+}

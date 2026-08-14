@@ -1,23 +1,110 @@
 {% extends "base.html" %}
 {% block title %}{{ task.title }} — TASKORA WORK{% endblock %}
+
 {% block content %}
 <div class="detail">
-<div class="detail-main">
-<span class="pill">{{ task.category }}</span><h1>{{ task.title }}</h1>
-<p class="lead">{{ task.description }}</p>
-<div class="stats"><div class="stat"><span>Reward</span><strong>₦{{ "{:,}".format(task.reward) }}</strong></div><div class="stat"><span>Difficulty</span><strong>{{ task.difficulty }}</strong></div><div class="stat"><span>Slots</span><strong>{{ task.slots }}</strong></div></div>
+
+    <div class="detail-main">
+        <span class="pill">{{ task.category }}</span>
+
+        <h1>{{ task.title }}</h1>
+
+        <p class="lead">{{ task.description }}</p>
+
+        <div class="stats">
+            <div class="stat">
+                <span>Reward</span>
+                <strong>₦{{ "{:,}".format(task.reward) }}</strong>
+            </div>
+
+            <div class="stat">
+                <span>Difficulty</span>
+                <strong>{{ task.difficulty }}</strong>
+            </div>
+
+            <div class="stat">
+                <span>Slots</span>
+                <strong>{{ task.slots }}</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-card">
+
+        {% if not current_user.activated %}
+
+            <h2>Activation required</h2>
+
+            <p>
+                Activate your account before starting tasks.
+            </p>
+
+            <a class="btn full" href="{{ url_for('activate') }}">
+                Activate ₦3,000
+            </a>
+
+        {% elif already %}
+
+            <h2>Already submitted</h2>
+
+            <p>
+                Your submission for this task is already pending or approved.
+            </p>
+
+        {% else %}
+
+            <h2>Step 1 — Open the task</h2>
+
+            <p>
+                Click the button below to open the required social media
+                platform and complete the task.
+            </p>
+
+            {% if task.task_link %}
+
+                <a
+                    class="btn full"
+                    href="{{ task.task_link }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    Open {{ task.category }} Task ↗
+                </a>
+
+            {% endif %}
+
+            <div style="height: 16px;"></div>
+
+            <h2>Step 2 — Submit your proof</h2>
+
+            <p>
+                After completing the task, return here and submit your
+                screenshot, link or other required proof.
+            </p>
+
+            <form method="post"
+                  action="{{ url_for('submit_task', task_id=task.id) }}">
+
+                <label>
+                    Proof / work details
+
+                    <textarea
+                        name="proof"
+                        rows="8"
+                        required
+                        placeholder="Paste your proof, link, screenshot details or other required information here."
+                    ></textarea>
+                </label>
+
+                <button class="btn full" type="submit">
+                    Submit for Review
+                </button>
+
+            </form>
+
+        {% endif %}
+
+    </div>
+
 </div>
-<div class="form-card">
-{% if not current_user.activated %}
-<h2>Activation required</h2><p>Activate your account before starting tasks.</p><a class="btn full" href="{{ url_for('activate') }}">Activate ₦3,000</a>
-{% elif already %}
-<h2>Already submitted</h2><p>Your submission for this task is already pending or approved.</p>
-{% else %}
-<h2>Submit your work</h2>
-<form method="post" action="{{ url_for('submit_task', task_id=task.id) }}">
-<label>Proof / work details<textarea name="proof" rows="8" required placeholder="Paste the required proof, link, text or details here."></textarea></label>
-<button class="btn full" type="submit">Submit for Review</button>
-</form>
-{% endif %}
-</div></div>
 {% endblock %}

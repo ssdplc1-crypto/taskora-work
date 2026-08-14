@@ -63,45 +63,45 @@ class DBConnection:
             self.conn.execute("PRAGMA foreign_keys = ON")
 
     def _sql(self, sql):
-        if not self.is_postgres:
-            return sql
-        sql = re.sub(r"INSERT\s+OR\s+IGNORE\s+INTO", "INSERT INTO", sql, flags=re.I)
-        sql = sql.replace("?", "%s")
-        if re.search(r"INSERT\s+INTO", sql, flags=re.I) and "ON CONFLICT" not in sql.upper() and re.search(r"INSERT\s+INTO\s+\w+\s*\([^)]*\)\s*VALUES", sql, flags=re.I):
-            sql += " ON CONFLICT DO NOTHING"
+    if not self.is_postgres:
         return sql
 
-        def execute(self, sql, params=()):
-        if self.is_postgres:
-            cur = self.conn.cursor()
-            cur.execute(self._sql(sql), params)
-            return cur
-        return self.conn.execute(sql, params)
+    sql = re.sub(r"INSERT\s+OR\s+IGNORE\s+INTO", "INSERT INTO", sql, flags=re.I)
+    sql = sql.replace("?", "%s")
+    if re.search(r"INSERT\s+INTO", sql, flags=re.I) and "ON CONFLICT" not in sql.upper() and re.search(r"INSERT\s+INTO", sql, flags=re.I):
+        sql += " ON CONFLICT DO NOTHING"
+    return sql
 
-    def executescript(self, sql):
-        if self.is_postgres:
-            cur = self.conn.cursor()
+def execute(self, sql, params=()):
+    if self.is_postgres:
+        cur = self.conn.cursor()
+        cur.execute(self._sql(sql), params)
+        return cur
+    return self.conn.execute(sql, params)
 
-            statements = [
-                statement.strip()
-                for statement in sql.split(";")
-                if statement.strip()
-            ]
 
-            for statement in statements:
-                cur.execute(self._sql(statement))
+def executescript, sql):
+    if self.is_postgres:
+        cur = self.conn.cursor()
 
-            return cur
+        statements = [
+            statement.strip()
+            for statement in sql.split(";")
+            if statement.strip()
+        ]
 
-        return self.conn.executescript(sql)
-        
-    def commit(self):
-        self.conn.commit()
+        for statement in statements:
+            cur.execute(self._sql(statement))
 
-    def rollback(self):
-        self.conn.rollback()
+        return cur
 
-    def close(self):
+    return self.conn.executescript(sql)
+
+
+def commit(self):
+    self.conn.commit()
+    
+def close(self):
         self.conn.close()
 
 

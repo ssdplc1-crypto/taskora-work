@@ -1,15 +1,104 @@
 {% extends "base.html" %}
 {% block title %}Create Task — TASKORA WORK{% endblock %}
+
 {% block content %}
-<div class="form-card narrow"><span class="eyebrow">ADMIN</span><h1>Create task</h1>
-<form method="post">
-<label>Title<input name="title" required></label>
-<label>Category<input name="category" placeholder="Data Entry" required></label>
-<label>Description<textarea name="description" rows="8" required></textarea></label>
-<label>Reward (NGN)<input type="number" name="reward" min="1" required></label>
-<label>Deadline<input type="datetime-local" name="deadline"></label>
-<label>Slots<input type="number" name="slots" min="1" value="1" required></label>
-<label>Difficulty<select name="difficulty"><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></label>
-<button class="btn full" type="submit">Publish Task</button>
-</form></div>
+<div class="form-card narrow">
+    <span class="eyebrow">ADMIN</span>
+    <h1>Create task</h1>
+
+    <form method="post">
+
+        <label>
+            Title
+            <input
+                name="title"
+                placeholder="e.g. Follow TASKORA on TikTok"
+                required
+            >
+        </label>
+
+        <label>
+            Platform / Category
+            <select name="category" required>
+                <option value="">Select platform</option>
+                <option value="TikTok">TikTok</option>
+                <option value="YouTube">YouTube</option>
+                <option value="Facebook">Facebook</option>
+                <option value="X">X (Twitter)</option>
+                <option value="Instagram">Instagram</option>
+                <option value="Telegram">Telegram</option>
+                <option value="WhatsApp">WhatsApp</option>
+                <option value="Website">Website</option>
+                <option value="Other">Other</option>
+            </select>
+        </label>
+
+        <label>
+            Task Link
+            <input
+                type="url"
+                name="task_link"
+                placeholder="https://..."
+                required
+            >
+            <small>
+                Wannan shi ne link ɗin da user zai buɗe domin yin task.
+            </small>
+        </label>
+
+        <label>
+            Description
+            <textarea
+                name="description"
+                rows="8"
+                placeholder="Explain exactly what the worker should do..."
+                required
+            ></textarea>
+        </label>
+
+        <label>
+            Reward (NGN)
+            <input
+                type="number"
+                name="reward"
+                min="1"
+                placeholder="50"
+                required
+            >
+        </label>
+
+        <label>
+            Deadline
+            <input
+                type="datetime-local"
+                name="deadline"
+            >
+        </label>
+
+        <label>
+            Slots
+            <input
+                type="number"
+                name="slots"
+                min="1"
+                value="1"
+                required
+            >
+        </label>
+
+        <label>
+            Difficulty
+            <select name="difficulty">
+                <option value="Beginner">Beginner</option>
+                <option value="Intermediate">Intermediate</option>
+                <option value="Advanced">Advanced</option>
+            </select>
+        </label>
+
+        <button class="btn full" type="submit">
+            Publish Task
+        </button>
+
+    </form>
+</div>
 {% endblock %}

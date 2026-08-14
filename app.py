@@ -78,22 +78,22 @@ class DBConnection:
             return cur
         return self.conn.execute(sql, params)
 
-    def executecript(self, sql):
-    if self.is_postgres:
-        cur = self.conn.cursor()
+            def executecript(self, sql):
+        if self.is_postgres:
+            cur = self.conn.cursor()
 
-        statements = [
-            statement.strip()
-            for statement in sql.split(";")
-            if statement.strip()
-        ]
+            statements = [
+                statement.strip()
+                for statement in sql.split(";")
+                if statement.strip()
+            ]
 
-        for statement in statements:
-            cur.execute(self._sql(statement))
+            for statement in statements:
+                cur.execute(self._sql(statement))
 
-        return cur
+            return cur
 
-    return self.conn.executescript(sql)
+        return self.conn.executescript(sql)
 
     def commit(self):
         self.conn.commit()

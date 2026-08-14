@@ -82,6 +82,36 @@
                 screenshot, link or other required proof.
             </p>
 
+        <form method="post"
+      action="{{ url_for('submit_task', task_id=task.id) }}"
+      enctype="multipart/form-data">
+
+    <label>
+        Proof Screenshot
+        <input
+            type="file"
+            name="proof_file"
+            accept="image/*"
+            required
+        >
+        <small>Upload a screenshot showing that you completed the task.</small>
+    </label>
+
+    <label>
+        Proof / work details
+        <textarea
+            name="proof"
+            rows="6"
+            required
+            placeholder="Describe what you completed and add any useful details here."
+        ></textarea>
+    </label>
+
+    <button class="btn full" type="submit">
+        Submit for Review
+    </button>
+
+        </form>
             <form method="post"
                   action="{{ url_for('submit_task', task_id=task.id) }}">
 

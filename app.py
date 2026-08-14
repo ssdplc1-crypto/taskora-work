@@ -112,7 +112,7 @@ def init_db():
     conn = db()
 
     if conn.is_postgres:
-        conn.executecript("""
+       conn.executescript("""
         CREATE TABLE IF NOT EXISTS users (
             id BIGSERIAL PRIMARY KEY,
             full_name TEXT NOT NULL,

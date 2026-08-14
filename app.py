@@ -152,10 +152,12 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_submissions_task ON submissions(task_id);
         CREATE INDEX IF NOT EXISTS idx_ledger_user ON ledger(user_id);
         CREATE INDEX IF NOT EXISTS idx_withdrawals_user ON withdrawals(user_id);
-        """)
-                conn.execute(
+                """)
+
+        conn.execute(
             "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS task_link TEXT"
-                )
+        )
+
     else:
         conn.executescript("""
         CREATE TABLE IF NOT EXISTS users (

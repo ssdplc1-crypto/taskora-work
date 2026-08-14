@@ -131,8 +131,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS submissions (
             id BIGSERIAL PRIMARY KEY, task_id BIGINT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
             user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE, proof TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'pending', reviewer_note TEXT, submitted_at TEXT NOT NULL, reviewed_at TEXT
-        );
+            status TEXT NOT NULL DEFAULT 'pending', reviewer_note TEXT, submitted_at TEXT NOT NULL, reviewed_at TEXT, proof_file TEXT
         CREATE TABLE IF NOT EXISTS ledger (
             id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             kind TEXT NOT NULL, amount INTEGER NOT NULL, reference TEXT UNIQUE NOT NULL, description TEXT NOT NULL,
@@ -185,7 +184,7 @@ def init_db():
 );
         CREATE TABLE IF NOT EXISTS submissions (
             id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER NOT NULL, user_id INTEGER NOT NULL, proof TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'pending', reviewer_note TEXT, submitted_at TEXT NOT NULL, reviewed_at TEXT,
+            status TEXT NOT NULL DEFAULT 'pending', reviewer_note TEXT, submitted_at TEXT NOT NULL, reviewed_at TEXT, proof_file TEXT,
             FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         );
         CREATE TABLE IF NOT EXISTS ledger (
@@ -208,6 +207,23 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_ledger_user ON ledger(user_id);
         CREATE INDEX IF NOT EXISTS idx_withdrawals_user ON withdrawals(user_id);
         """)
+            # Add proof_file column to existing submissions table
+    if conn.is_postgres:
+        conn.execute(
+            "ALTER TABLE submissions ADD COLUMN IF NOT EXISTS proof_file TEXT"
+        )
+    else:
+        columns = {
+            row[1]
+            for row in conn.execute(
+                "PRAGMA table_info(submissions)"
+            ).fetchall()
+        }
+
+        if "proof_file" not in columns:
+            conn.execute(
+                "ALTER TABLE submissions ADD COLUMN proof_file TEXT"
+            )
     admin = conn.execute("SELECT id FROM users WHERE role='admin' LIMIT 1").fetchone()
     if not admin:
         conn.execute(
@@ -658,46 +674,99 @@ def task_detail(task_id):
         flash("Task not found.", "error")
         return redirect(url_for("tasks"))
     return render_template("task_detail.html", task=task, already=already)
-
-
 @app.route("/tasks/<int:task_id>/submit", methods=["POST"])
 @login_required
 def submit_task(task_id):
     u = current_user()
+
     if not u["activated"]:
         return redirect(url_for("activate"))
+
     proof = request.form.get("proof", "").strip()
+    proof_file = request.files.get("proof_file")
+
+    if not proof_file or not proof_file.filename:
+        flash("Please upload a screenshot showing that you completed the task.", "error")
+        return redirect(url_for("task_detail", task_id=task_id))
+
     if len(proof) < 5:
         flash("Please provide task proof/details.", "error")
         return redirect(url_for("task_detail", task_id=task_id))
 
     conn = db()
-    task = conn.execute("SELECT * FROM tasks WHERE id=? AND status='open'", (task_id,)).fetchone()
+
+    task = conn.execute(
+        "SELECT * FROM tasks WHERE id=? AND status='open'",
+        (task_id,)
+    ).fetchone()
+
     existing = conn.execute(
-        "SELECT id FROM submissions WHERE task_id=? AND user_id=? AND status IN ('pending','approved')",
+        """
+        SELECT id
+        FROM submissions
+        WHERE task_id=? AND user_id=?
+        AND status IN ('pending','approved')
+        """,
         (task_id, u["id"])
     ).fetchone()
+
     active_slots = conn.execute(
-        "SELECT COUNT(*) FROM submissions WHERE task_id=? AND status IN ('pending','approved')",
+        """
+        SELECT COUNT(*)
+        FROM submissions
+        WHERE task_id=?
+        AND status IN ('pending','approved')
+        """,
         (task_id,)
     ).fetchone()[0] if task else 0
+
     deadline_passed = False
+
     if task and task["deadline"]:
         try:
-            deadline_passed = datetime.fromisoformat(task["deadline"]).replace(tzinfo=LAGOS_TZ) < lagos_now()
+            deadline_passed = datetime.fromisoformat(
+                task["deadline"]
+            ).replace(tzinfo=LAGOS_TZ) < lagos_now()
         except ValueError:
             deadline_passed = False
+
     if not task or existing or active_slots >= task["slots"] or deadline_passed:
         conn.close()
-        flash("Task unavailable, full, expired, or already submitted.", "error")
+        flash(
+            "Task unavailable, full, expired, or already submitted.",
+            "error"
+        )
         return redirect(url_for("tasks"))
 
+    # Read uploaded screenshot
+    file_bytes = proof_file.read()
+
+    if not file_bytes:
+        conn.close()
+        flash("The uploaded screenshot is empty.", "error")
+        return redirect(url_for("task_detail", task_id=task_id))
+
+    # Store image as base64 in database
+    import base64
+
+    proof_file_data = base64.b64encode(file_bytes).decode("utf-8")
+
+    content_type = proof_file.mimetype or "image/jpeg"
+
+    proof_file_data = f"data:{content_type};base64,{proof_file_data}"
+
     conn.execute(
-        "INSERT INTO submissions(task_id,user_id,proof,submitted_at) VALUES(?,?,?,?)",
-        (task_id, u["id"], proof, now())
+        """
+        INSERT INTO submissions
+        (task_id, user_id, proof, proof_file, submitted_at)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (task_id, u["id"], proof, proof_file_data, now())
     )
+
     conn.commit()
     conn.close()
+
     flash("Task submitted for review.", "success")
     return redirect(url_for("dashboard"))
 

@@ -470,28 +470,55 @@ def activate():
 @app.route("/activate/pay", methods=["POST"])
 @login_required
 def activate_pay():
-    """Start activation using the fixed Flutterwave Payment Link."""
+    """Create a real Flutterwave checkout transaction for this TASKORA user."""
     u = current_user()
+
     if u["activated"]:
         return redirect(url_for("dashboard"))
 
-    if not FLUTTERWAVE_PAYMENT_LINK:
-        flash("Flutterwave payment link is not configured.", "error")
+    if not FLW_SECRET_KEY:
+        flash("Flutterwave is not configured on the server.", "error")
         return redirect(url_for("activate"))
 
-    # This local reference is for TASKORA's internal tracking only.
-    # The fixed Flutterwave Payment Link creates the real provider transaction.
-    tx_ref = f"TASKORA-LINK-{u['id']}-{uuid.uuid4().hex[:12]}"
+    tx_ref = f"TASKORA-ACT-{u['id']}-{uuid.uuid4().hex[:16]}"
+    redirect_url = f"{BASE_URL}/activate/callback"
+
+    payload = {
+        "tx_ref": tx_ref,
+        "amount": ACTIVATION_FEE,
+        "currency": CURRENCY,
+        "redirect_url": redirect_url,
+        "payment_options": "card,banktransfer,ussd",
+        "customer": {
+            "email": u["email"],
+            "name": u["full_name"],
+            "phonenumber": u["phone"],
+        },
+        "customizations": {
+            "title": "TASKORA WORK Activation",
+            "description": "TASKORA WORK account activation",
+        },
+    }
+
+    try:
+        result = flw_post("/payments", payload)
+        checkout_link = str((result.get("data") or {}).get("link") or "").strip()
+        if not checkout_link:
+            raise RuntimeError("Flutterwave did not return a checkout link.")
+    except Exception as e:
+        flash(str(e), "error")
+        return redirect(url_for("activate"))
 
     conn = db()
     try:
         conn.execute(
-            "UPDATE users SET activation_tx_ref=? WHERE id=?",
-            (tx_ref, u["id"])
+            "UPDATE users SET activation_tx_ref=? WHERE id=? AND activated=0",
+            (tx_ref, u["id"]),
         )
         conn.execute(
-            "INSERT OR IGNORE INTO payment_events(tx_ref,user_id,event_type,amount,currency,raw_json,created_at) "
-            "VALUES(?,?,?,?,?,?,?)",
+            "INSERT OR IGNORE INTO payment_events("
+            "tx_ref,user_id,event_type,amount,currency,raw_json,created_at"
+            ") VALUES(?,?,?,?,?,?,?)",
             (
                 tx_ref,
                 u["id"],
@@ -499,22 +526,337 @@ def activate_pay():
                 ACTIVATION_FEE,
                 CURRENCY,
                 json.dumps({
-                    "payment_link": FLUTTERWAVE_PAYMENT_LINK,
-                    "amount": ACTIVATION_FEE,
-                    "currency": CURRENCY,
-                    "email": u["email"],
+                    "tx_ref": tx_ref,
+                    "redirect_url": redirect_url,
+                    "flutterwave_response": result,
                 }),
                 now(),
-            )
+            ),
         )
         conn.commit()
     finally:
         conn.close()
 
-    return redirect(FLUTTERWAVE_PAYMENT_LINK)
+    return redirect(checkout_link)
+
+
+def _activation_started_for_user(user_id):
+    conn = db()
+    row = conn.execute(
+        "SELECT tx_ref FROM payment_events "
+        "WHERE user_id=? AND event_type='activation_started' "
+        "ORDER BY id DESC LIMIT 1",
+        (user_id,),
+    ).fetchone()
+    conn.close()
+    return row
+
+
+def _transaction_already_used(transaction_id):
+    conn = db()
+    row = conn.execute(
+        "SELECT id FROM payment_events "
+        "WHERE transaction_id=? AND event_type='activation_verified' LIMIT 1",
+        (str(transaction_id),),
+    ).fetchone()
+    conn.close()
+    return bool(row)
 
 
 def verify_activation_transaction(transaction_id, user):
+    """Verify the real Flutterwave transaction before activating the account."""
+    if not FLW_SECRET_KEY:
+        raise RuntimeError("FLW_SECRET_KEY is not configured.")
+
+    transaction_id = str(transaction_id).strip()
+    if not transaction_id:
+        raise RuntimeError("Flutterwave transaction ID is missing.")
+
+    r = requests.get(
+        f"https://api.flutterwave.com/v3/transactions/{transaction_id}/verify",
+        headers=flw_headers(),
+        timeout=30,
+    )
+
+    try:
+        data = r.json()
+    except Exception:
+        data = {"status": "error", "message": r.text}
+
+    if r.status_code >= 400 or data.get("status") != "success":
+        raise RuntimeError("Flutterwave could not verify this payment.")
+
+    tx = data.get("data") or {}
+    tx_status = str(tx.get("status") or "").lower()
+    tx_currency = str(tx.get("currency") or "").upper()
+    provider_tx_ref = str(tx.get("tx_ref") or "").strip()
+
+    try:
+        tx_amount = float(tx.get("amount", 0))
+    except (TypeError, ValueError):
+        tx_amount = 0
+
+    paid_email = str(
+        (tx.get("customer") or {}).get("email") or ""
+    ).strip().lower()
+    account_email = str(user["email"] or "").strip().lower()
+
+    if tx_status != "successful":
+        raise RuntimeError("Payment is not successful.")
+    if tx_amount != float(ACTIVATION_FEE):
+        raise RuntimeError(
+            f"Invalid activation amount. Expected ₦{ACTIVATION_FEE:,}."
+        )
+    if tx_currency != CURRENCY:
+        raise RuntimeError("Invalid payment currency.")
+    if not paid_email or paid_email != account_email:
+        raise RuntimeError(
+            "The payment email does not match your TASKORA account email."
+        )
+
+    started = _activation_started_for_user(user["id"])
+    if not started:
+        raise RuntimeError(
+            "No pending TASKORA activation payment was found for this account."
+        )
+
+    if provider_tx_ref != str(started["tx_ref"]):
+        raise RuntimeError(
+            "This Flutterwave transaction does not match the TASKORA activation request."
+        )
+
+    if _transaction_already_used(transaction_id):
+        raise RuntimeError("This Flutterwave transaction has already been used.")
+
+    return data, tx, str(started["tx_ref"])
+
+
+@app.route("/activate/callback")
+@login_required
+def activation_callback():
+    """Verify Flutterwave payment server-side before activating the worker."""
+    status = str(request.args.get("status") or "").lower()
+    transaction_id = (
+        request.args.get("transaction_id")
+        or request.args.get("transactionId")
+    )
+
+    u = current_user()
+
+    if u["activated"]:
+        return redirect(url_for("dashboard"))
+
+    if status != "successful" or not transaction_id:
+        flash(
+            "Payment was not completed or transaction ID is missing.",
+            "error",
+        )
+        return redirect(url_for("activate"))
+
+    try:
+        verified_data, tx, local_tx_ref = verify_activation_transaction(
+            transaction_id, u
+        )
+
+        provider_tx_ref = str(tx.get("tx_ref") or "").strip()
+        event_ref = f"FLW-ACT-{transaction_id}"
+
+        conn = db()
+        try:
+            already_verified = conn.execute(
+                "SELECT id FROM payment_events "
+                "WHERE transaction_id=? AND event_type='activation_verified' LIMIT 1",
+                (str(transaction_id),),
+            ).fetchone()
+
+            if already_verified:
+                flash("This payment has already been verified.", "error")
+                return redirect(url_for("activate"))
+
+            updated = conn.execute(
+                "UPDATE users SET activated=1, activation_transaction_id=? "
+                "WHERE id=? AND activated=0",
+                (str(transaction_id), u["id"]),
+            )
+
+            if updated.rowcount != 1:
+                conn.rollback()
+                flash("Account activation could not be completed.", "error")
+                return redirect(url_for("activate"))
+
+            conn.execute(
+                "INSERT OR IGNORE INTO payment_events("
+                "tx_ref,user_id,event_type,transaction_id,amount,currency,"
+                "raw_json,created_at"
+                ") VALUES(?,?,?,?,?,?,?,?)",
+                (
+                    event_ref,
+                    u["id"],
+                    "activation_verified",
+                    str(transaction_id),
+                    ACTIVATION_FEE,
+                    CURRENCY,
+                    json.dumps({
+                        "local_activation_ref": local_tx_ref,
+                        "provider_tx_ref": provider_tx_ref,
+                        "flutterwave_response": verified_data,
+                    }),
+                    now(),
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        flash(
+            "Payment confirmed. Your TASKORA account is now activated.",
+            "success",
+        )
+        return redirect(url_for("dashboard"))
+
+    except Exception as e:
+        flash(str(e), "error")
+        return redirect(url_for("activate"))
+
+
+@app.route("/webhooks/flutterwave", methods=["POST"])
+def flutterwave_webhook():
+    """Receive Flutterwave events and independently verify successful payments."""
+    if FLW_WEBHOOK_HASH:
+        supplied = request.headers.get("verif-hash", "")
+        if not supplied or not secrets.compare_digest(
+            supplied, FLW_WEBHOOK_HASH
+        ):
+            return jsonify({"ok": False}), 401
+
+    payload = request.get_json(silent=True) or {}
+    event = str(
+        payload.get("event") or payload.get("event_type") or "unknown"
+    ).lower()
+    data = payload.get("data") or {}
+    transaction_id = data.get("id")
+
+    if not transaction_id:
+        return jsonify({
+            "received": True,
+            "verified": False,
+            "reason": "missing_transaction_id",
+        }), 200
+
+    transaction_id = str(transaction_id).strip()
+
+    try:
+        verified = flw_get(
+            f"/transactions/{transaction_id}/verify"
+        )
+        tx = verified.get("data") or {}
+
+        status = str(tx.get("status") or "").lower()
+        currency = str(tx.get("currency") or "").upper()
+
+        try:
+            amount = float(tx.get("amount", 0))
+        except (TypeError, ValueError):
+            amount = 0
+
+        email = str(
+            (tx.get("customer") or {}).get("email") or ""
+        ).strip().lower()
+        provider_tx_ref = str(tx.get("tx_ref") or "").strip()
+
+        audit_ref = (
+            provider_tx_ref
+            if provider_tx_ref
+            else f"FLW-EVENT-{transaction_id}-{event}"
+        )
+
+        conn = db()
+        try:
+            conn.execute(
+                "INSERT OR IGNORE INTO payment_events("
+                "tx_ref,event_type,transaction_id,amount,currency,raw_json,created_at"
+                ") VALUES(?,?,?,?,?,?,?)",
+                (
+                    audit_ref,
+                    event,
+                    transaction_id,
+                    data.get("amount"),
+                    data.get("currency"),
+                    json.dumps(payload),
+                    now(),
+                ),
+            )
+
+            if (
+                event in {
+                    "charge.completed",
+                    "payment.completed",
+                    "charge.completed.v2",
+                }
+                and status == "successful"
+                and amount == float(ACTIVATION_FEE)
+                and currency == CURRENCY
+                and email
+                and provider_tx_ref
+            ):
+                user = conn.execute(
+                    "SELECT id, activation_tx_ref, activated "
+                    "FROM users WHERE LOWER(email)=? AND role='worker' LIMIT 1",
+                    (email,),
+                ).fetchone()
+
+                if (
+                    user
+                    and not user["activated"]
+                    and str(user["activation_tx_ref"] or "") == provider_tx_ref
+                ):
+                    already_used = conn.execute(
+                        "SELECT id FROM payment_events "
+                        "WHERE transaction_id=? AND event_type='activation_verified' LIMIT 1",
+                        (transaction_id,),
+                    ).fetchone()
+
+                    if not already_used:
+                        conn.execute(
+                            "UPDATE users SET activated=1, activation_transaction_id=? "
+                            "WHERE id=? AND activated=0",
+                            (transaction_id, user["id"]),
+                        )
+                        conn.execute(
+                            "INSERT OR IGNORE INTO payment_events("
+                            "tx_ref,user_id,event_type,transaction_id,amount,currency,"
+                            "raw_json,created_at"
+                            ") VALUES(?,?,?,?,?,?,?,?)",
+                            (
+                                f"FLW-ACT-{transaction_id}",
+                                user["id"],
+                                "activation_verified",
+                                transaction_id,
+                                ACTIVATION_FEE,
+                                CURRENCY,
+                                json.dumps({
+                                    "provider_tx_ref": provider_tx_ref,
+                                    "flutterwave_response": verified,
+                                }),
+                                now(),
+                            ),
+                        )
+
+            conn.commit()
+        finally:
+            conn.close()
+
+        return jsonify({"received": True, "verified": True}), 200
+
+    except Exception:
+        # Webhook delivery should be acknowledged; the redirect/verification
+        # path remains the authoritative activation path.
+        return jsonify({"received": True, "verified": False}), 200
+
+
+@app.route("/tasks")
+@login_required
+def tasks():
     """Verify the real Flutterwave transaction before activating the account."""
     if not FLW_SECRET_KEY:
         raise RuntimeError("FLW_SECRET_KEY is not configured.")

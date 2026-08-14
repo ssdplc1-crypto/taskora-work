@@ -71,14 +71,15 @@ class DBConnection:
             sql += " ON CONFLICT DO NOTHING"
         return sql
 
-    def execute(self, sql, params=()):
+        def execute(self, sql, params=()):
         if self.is_postgres:
             cur = self.conn.cursor()
             cur.execute(self._sql(sql), params)
             return cur
         return self.conn.execute(sql, params)
-   def executescript(self, sql):
-       if self.is_postgres:
+
+    def executescript(self, sql):
+        if self.is_postgres:
             cur = self.conn.cursor()
 
             statements = [

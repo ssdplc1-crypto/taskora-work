@@ -962,6 +962,8 @@ def submit_task(task_id):
 
     proof_file_data = f"data:{content_type};base64,{proof_file_data}"
 
+    # Create the submission first so we have a stable ID for its earning record.
+    # The earning is intentionally PENDING until an admin approves the proof.
     conn.execute(
         """
         INSERT INTO submissions
@@ -971,10 +973,47 @@ def submit_task(task_id):
         (task_id, u["id"], proof, proof_file_data, now())
     )
 
+    submission = conn.execute(
+        """
+        SELECT id
+        FROM submissions
+        WHERE task_id=? AND user_id=? AND status='pending'
+        ORDER BY id DESC
+        LIMIT 1
+        """,
+        (task_id, u["id"])
+    ).fetchone()
+
+    if not submission:
+        conn.rollback()
+        conn.close()
+        flash("Could not create the task submission. Please try again.", "error")
+        return redirect(url_for("task_detail", task_id=task_id))
+
+    submission_id = submission["id"]
+    earning_ref = f"TASKORA-EARN-{u['id']}-{submission_id}"
+
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO ledger
+        (user_id, kind, amount, reference, description, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            u["id"],
+            "earning",
+            task["reward"],
+            earning_ref,
+            f"Pending task: {task['title']}",
+            "pending",
+            now(),
+        )
+    )
+
     conn.commit()
     conn.close()
 
-    flash("Task submitted for review.", "success")
+    flash("Task submitted for review. Your reward is pending admin approval.", "success")
     return redirect(url_for("dashboard"))
 
 
@@ -1239,19 +1278,53 @@ def review_submission(submission_id, action):
         flash("Submission is no longer pending.", "error")
         return redirect(url_for("admin_submissions"))
 
+    ref = f"TASKORA-EARN-{s['user_id']}-{s['id']}"
+
     if action == "approve":
-        ref = f"TASKORA-EARN-{s['user_id']}-{s['id']}"
-        conn.execute("UPDATE submissions SET status='approved',reviewed_at=? WHERE id=?", (now(), submission_id))
+        # Move the existing pending earning to AVAILABLE.
+        # If this is an older submission created before the pending-ledger fix,
+        # create the available earning once as a safe backward-compatible fallback.
         conn.execute(
-            "INSERT OR IGNORE INTO ledger(user_id,kind,amount,reference,description,status,created_at) VALUES(?,?,?,?,?,?,?)",
-            (s["user_id"],"earning",s["reward"],ref,f"Approved task: {s['title']}","available",now())
+            "UPDATE submissions SET status='approved',reviewed_at=? WHERE id=? AND status='pending'",
+            (now(), submission_id)
         )
+
+        updated = conn.execute(
+            "UPDATE ledger SET status='available', description=? "
+            "WHERE reference=? AND user_id=? AND kind='earning' AND status='pending'",
+            (f"Approved task: {s['title']}", ref, s["user_id"])
+        )
+
+        if updated.rowcount == 0:
+            conn.execute(
+                "INSERT OR IGNORE INTO ledger("
+                "user_id,kind,amount,reference,description,status,created_at) "
+                "VALUES(?,?,?,?,?,?,?)",
+                (
+                    s["user_id"],
+                    "earning",
+                    s["reward"],
+                    ref,
+                    f"Approved task: {s['title']}",
+                    "available",
+                    now(),
+                )
+            )
+
         flash("Submission approved and earnings credited.", "success")
     else:
-        note = request.form.get("note","Task submission rejected.")
+        note = request.form.get("note", "Task submission rejected.").strip()[:500]
         conn.execute(
-            "UPDATE submissions SET status='rejected',reviewer_note=?,reviewed_at=? WHERE id=?",
-            (note,now(),submission_id)
+            "UPDATE submissions SET status='rejected',reviewer_note=?,reviewed_at=? WHERE id=? AND status='pending'",
+            (note, now(), submission_id)
+        )
+
+        # Keep a rejected earning record for audit/history, but make sure it
+        # cannot appear in Pending or Available balance.
+        conn.execute(
+            "UPDATE ledger SET status='rejected', description=? "
+            "WHERE reference=? AND user_id=? AND kind='earning' AND status='pending'",
+            (f"Rejected task: {s['title']}", ref, s["user_id"])
         )
         flash("Submission rejected.", "success")
     conn.commit()

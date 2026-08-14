@@ -819,25 +819,98 @@ def admin_dashboard():
 @admin_required
 def admin_new_task():
     if request.method == "POST":
-        title = request.form.get("title","").strip()
-        category = request.form.get("category","").strip()
-        description = request.form.get("description","").strip()
-        reward = int(request.form.get("reward","0") or 0)
-        deadline = request.form.get("deadline","").strip()
-        slots = int(request.form.get("slots","1") or 1)
-        difficulty = request.form.get("difficulty","Beginner")
-        if not title or not category or not description or reward <= 0:
-            flash("Complete all task fields.", "error")
-        else:
-            conn = db()
+        title = request.form.get("title", "").strip()
+        category = request.form.get("category", "").strip()
+        task_link = request.form.get("task_link", "").strip()
+        description = request.form.get("description", "").strip()
+
+        try:
+            reward = int(request.form.get("reward", "0") or 0)
+        except (TypeError, ValueError):
+            reward = 0
+
+        try:
+            slots = int(request.form.get("slots", "1") or 1)
+        except (TypeError, ValueError):
+            slots = 1
+
+        deadline = request.form.get("deadline", "").strip()
+        difficulty = request.form.get("difficulty", "Beginner").strip()
+
+        # Basic validation
+        if not title:
+            flash("Task title is required.", "error")
+            return render_template("admin_task.html")
+
+        if not category:
+            flash("Please select a platform/category.", "error")
+            return render_template("admin_task.html")
+
+        if not task_link:
+            flash("Task link is required.", "error")
+            return render_template("admin_task.html")
+
+        if not task_link.startswith(("http://", "https://")):
+            flash("Task link must start with http:// or https://.", "error")
+            return render_template("admin_task.html")
+
+        if not description:
+            flash("Task description is required.", "error")
+            return render_template("admin_task.html")
+
+        if reward <= 0:
+            flash("Reward must be greater than zero.", "error")
+            return render_template("admin_task.html")
+
+        if slots <= 0:
+            flash("Slots must be greater than zero.", "error")
+            return render_template("admin_task.html")
+
+        conn = db()
+
+        try:
             conn.execute(
-                "INSERT INTO tasks(title,category,description,reward,deadline,slots,difficulty,created_at) VALUES(?,?,?,?,?,?,?,?)",
-                (title,category,description,reward,deadline,slots,difficulty,now())
+                """
+                INSERT INTO tasks
+                (
+                    title,
+                    category,
+                    description,
+                    task_link,
+                    reward,
+                    deadline,
+                    slots,
+                    difficulty,
+                    created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    title,
+                    category,
+                    description,
+                    task_link,
+                    reward,
+                    deadline,
+                    slots,
+                    difficulty,
+                    now(),
+                )
             )
+
             conn.commit()
+
+        except Exception as e:
+            conn.rollback()
+            flash(f"Could not create task: {str(e)}", "error")
+            return render_template("admin_task.html")
+
+        finally:
             conn.close()
-            flash("Task created.", "success")
-            return redirect(url_for("admin_dashboard"))
+
+        flash("Task created successfully.", "success")
+        return redirect(url_for("admin_dashboard"))
+
     return render_template("admin_task.html")
 
 

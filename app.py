@@ -78,7 +78,7 @@ class DBConnection:
             return cur
         return self.conn.execute(sql, params)
 
-                def executecript(self, sql):
+            def executecript(self, sql):
         if self.is_postgres:
             cur = self.conn.cursor()
 
@@ -111,18 +111,32 @@ def db():
 
 def init_db():
     conn = db()
+
     if conn.is_postgres:
-        conn.executescript("""
+        conn.executecript("""
         CREATE TABLE IF NOT EXISTS users (
             id BIGSERIAL PRIMARY KEY,
-            full_name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, phone TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'worker', activated INTEGER NOT NULL DEFAULT 0,
-            activation_tx_ref TEXT, activation_transaction_id TEXT, created_at TEXT NOT NULL
+            full_name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            phone TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'worker',
+            activated INTEGER NOT NULL DEFAULT 0,
+            activation_tx_ref TEXT,
+            activation_transaction_id TEXT,
+            created_at TEXT NOT NULL
         );
+
         CREATE TABLE IF NOT EXISTS bank_accounts (
-            id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            bank_code TEXT NOT NULL, bank_name TEXT NOT NULL, account_number TEXT NOT NULL, account_name TEXT,
-            is_verified INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, UNIQUE(user_id, account_number)
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            bank_code TEXT NOT NULL,
+            bank_name TEXT NOT NULL,
+            account_number TEXT NOT NULL,
+            account_name TEXT,
+            is_verified INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL,
+            UNIQUE(user_id, account_number)
         );
         CREATE TABLE IF NOT EXISTS tasks (
     id BIGSERIAL PRIMARY KEY,

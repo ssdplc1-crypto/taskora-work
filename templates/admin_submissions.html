@@ -1,8 +1,82 @@
 {% extends "base.html" %}
-{% block title %}Submissions — TASKORA WORK{% endblock %}
+{% block title %}Task Submissions — TASKORA WORK{% endblock %}
 {% block content %}
-<div class="page-head"><div><span class="eyebrow">ADMIN</span><h1>Task submissions</h1></div></div>
-<div class="table-wrap"><table><tr><th>Worker</th><th>Task</th><th>Proof</th><th>Reward</th><th>Status</th><th>Action</th></tr>
-{% for s in submissions %}<tr><td>{{ s.full_name }}<br><small>{{ s.email }}</small></td><td>{{ s.title }}</td><td class="proof">{{ s.proof }}</td><td>₦{{ "{:,}".format(s.reward) }}</td><td>{{ s.status }}</td><td>{% if s.status == 'pending' %}<form class="inline" method="post" action="{{ url_for('review_submission', submission_id=s.id, action='approve') }}"><button class="btn small" type="submit">Approve</button></form><form method="post" action="{{ url_for('review_submission', submission_id=s.id, action='reject') }}"><input name="note" placeholder="Reason"><button class="btn small danger" type="submit">Reject</button></form>{% endif %}</td></tr>{% else %}<tr><td colspan="6">No submissions.</td></tr>{% endfor %}
-</table></div>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">ADMIN</span>
+    <h1>Task Submissions</h1>
+    <p>Review worker proof before approving earnings.</p>
+  </div>
+</div>
+
+<div style="display:grid;gap:20px;">
+{% for s in submissions %}
+  <div class="card" style="padding:22px;">
+    <div style="display:flex;justify-content:space-between;gap:15px;flex-wrap:wrap;">
+      <div>
+        <h2 style="margin:0 0 6px;">{{ s.title }}</h2>
+        <div style="color:#647371;"><strong>{{ s.full_name }}</strong> · {{ s.email }}</div>
+      </div>
+      <div>
+        <strong>₦{{ "{:,}".format(s.reward) }}</strong>
+        <div style="margin-top:5px;"><span class="pill">{{ s.status }}</span></div>
+      </div>
+    </div>
+
+    <hr style="border:0;border-top:1px solid #e5eceb;margin:18px 0;">
+
+    <h3>Worker proof/details</h3>
+    <div style="background:#f2f8f7;border:1px solid #e5eceb;border-radius:12px;padding:14px;white-space:pre-wrap;word-break:break-word;">
+      {{ s.proof }}
+    </div>
+
+    <div style="margin-top:20px;">
+      <h3>Screenshot proof</h3>
+      {% if s.proof_file %}
+        <div style="border:1px solid #e5eceb;border-radius:14px;padding:10px;background:#fff;">
+          <img src="{{ s.proof_file }}"
+               alt="Worker task screenshot proof"
+               style="display:block;width:100%;max-height:650px;object-fit:contain;border-radius:10px;">
+        </div>
+      {% else %}
+        <div class="notice">No screenshot was uploaded with this submission.</div>
+      {% endif %}
+    </div>
+
+    <div style="margin-top:18px;color:#647371;font-size:13px;">
+      Submitted: {{ s.submitted_at }}
+    </div>
+
+    {% if s.status == "pending" %}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px;">
+        <form method="post" action="{{ url_for('review_submission', submission_id=s.id, action='approve') }}">
+          <button class="btn full" type="submit">✓ Approve & Credit</button>
+        </form>
+
+        <form method="post" action="{{ url_for('review_submission', submission_id=s.id, action='reject') }}">
+          <input type="text" name="note" placeholder="Reason for rejection"
+                 style="width:100%;padding:12px;border:1px solid #e5eceb;border-radius:10px;margin-bottom:8px;">
+          <button class="btn danger full" type="submit">Reject</button>
+        </form>
+      </div>
+    {% elif s.reviewer_note %}
+      <div class="notice" style="margin-top:18px;">
+        <strong>Reviewer note</strong>
+        <p>{{ s.reviewer_note }}</p>
+      </div>
+    {% endif %}
+  </div>
+{% else %}
+  <div class="card" style="padding:30px;">
+    <h2>No submissions yet</h2>
+    <p>Worker task submissions will appear here when they are submitted.</p>
+  </div>
+{% endfor %}
+</div>
+
+<style>
+@media (max-width:700px) {
+  .card form[method="post"] { min-width:0; }
+}
+</style>
 {% endblock %}

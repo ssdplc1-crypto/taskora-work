@@ -116,10 +116,18 @@ def init_db():
             is_verified INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, UNIQUE(user_id, account_number)
         );
         CREATE TABLE IF NOT EXISTS tasks (
-            id BIGSERIAL PRIMARY KEY, title TEXT NOT NULL, category TEXT NOT NULL, description TEXT NOT NULL,
-            reward INTEGER NOT NULL, deadline TEXT, slots INTEGER NOT NULL DEFAULT 1,
-            difficulty TEXT NOT NULL DEFAULT 'Beginner', status TEXT NOT NULL DEFAULT 'open', created_at TEXT NOT NULL
-        );
+    id BIGSERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    category TEXT NOT NULL,
+    description TEXT NOT NULL,
+    task_link TEXT,
+    reward INTEGER NOT NULL,
+    deadline TEXT,
+    slots INTEGER NOT NULL DEFAULT 1,
+    difficulty TEXT NOT NULL DEFAULT 'Beginner',
+    status TEXT NOT NULL DEFAULT 'open',
+    created_at TEXT NOT NULL
+);
         CREATE TABLE IF NOT EXISTS submissions (
             id BIGSERIAL PRIMARY KEY, task_id BIGINT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
             user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE, proof TEXT NOT NULL,
@@ -158,10 +166,18 @@ def init_db():
             UNIQUE(user_id, account_number), FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         );
         CREATE TABLE IF NOT EXISTS tasks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, category TEXT NOT NULL, description TEXT NOT NULL,
-            reward INTEGER NOT NULL, deadline TEXT, slots INTEGER NOT NULL DEFAULT 1, difficulty TEXT NOT NULL DEFAULT 'Beginner',
-            status TEXT NOT NULL DEFAULT 'open', created_at TEXT NOT NULL
-        );
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    category TEXT NOT NULL,
+    description TEXT NOT NULL,
+    task_link TEXT,
+    reward INTEGER NOT NULL,
+    deadline TEXT,
+    slots INTEGER NOT NULL DEFAULT 1,
+    difficulty TEXT NOT NULL DEFAULT 'Beginner',
+    status TEXT NOT NULL DEFAULT 'open',
+    created_at TEXT NOT NULL
+);
         CREATE TABLE IF NOT EXISTS submissions (
             id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER NOT NULL, user_id INTEGER NOT NULL, proof TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'pending', reviewer_note TEXT, submitted_at TEXT NOT NULL, reviewed_at TEXT,

@@ -78,7 +78,7 @@ class DBConnection:
             return cur
         return self.conn.execute(sql, params)
 
-            def executecript(self, sql):
+                def executecript(self, sql):
         if self.is_postgres:
             cur = self.conn.cursor()
 

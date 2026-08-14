@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="eyebrow">ADMIN</div>
+
+    <div class="actions" style="justify-content:space-between;align-items:center;">
+        <div>
+            <h1>Workers</h1>
+            <p class="muted">Manage TASKORA WORK workers and verify their bank accounts.</p>
+        </div>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn ghost">← Dashboard</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="card" style="margin:15px 0;padding:14px;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card" style="margin-top:20px;overflow-x:auto;">
+        <h2>Registered Workers</h2>
+
+        {% if users %}
+            <table style="width:100%;border-collapse:collapse;">
+                <thead>
+                    <tr>
+                        <th style="text-align:left;padding:12px;">ID</th>
+                        <th style="text-align:left;padding:12px;">Worker</th>
+                        <th style="text-align:left;padding:12px;">Email</th>
+                        <th style="text-align:left;padding:12px;">Phone</th>
+                        <th style="text-align:left;padding:12px;">Status</th>
+                        <th style="text-align:left;padding:12px;">Action</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for user in users %}
+                    <tr style="border-top:1px solid #e5eceb;">
+                        <td style="padding:12px;">
+                            {{ user["id"] }}
+                        </td>
+
+                        <td style="padding:12px;">
+                            <strong>{{ user["full_name"] }}</strong>
+                        </td>
+
+                        <td style="padding:12px;">
+                            {{ user["email"] }}
+                        </td>
+
+                        <td style="padding:12px;">
+                            {{ user["phone"] }}
+                        </td>
+
+                        <td style="padding:12px;">
+                            {% if user["activated"] %}
+                                <span style="color:#087f5b;font-weight:700;">
+                                    Activated
+                                </span>
+                            {% else %}
+                                <span style="color:#b42318;font-weight:700;">
+                                    Not Activated
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <td style="padding:12px;">
+                            <form method="POST"
+                                  action="{{ url_for('admin_toggle_activation', user_id=user['id']) }}">
+                                {% if user["activated"] %}
+                                    <button type="submit" class="btn danger small">
+                                        Deactivate
+                                    </button>
+                                {% else %}
+                                    <button type="submit" class="btn small">
+                                        Activate
+                                    </button>
+                                {% endif %}
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">No workers registered yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="card" style="margin-top:25px;overflow-x:auto;">
+        <h2>Bank Accounts</h2>
+
+        {% if banks %}
+            <table style="width:100%;border-collapse:collapse;">
+                <thead>
+                    <tr>
+                        <th style="text-align:left;padding:12px;">Bank</th>
+                        <th style="text-align:left;padding:12px;">Account Name</th>
+                        <th style="text-align:left;padding:12px;">Account Number</th>
+                        <th style="text-align:left;padding:12px;">Status</th>
+                        <th style="text-align:left;padding:12px;">Action</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for bank in banks %}
+                    <tr style="border-top:1px solid #e5eceb;">
+                        <td style="padding:12px;">
+                            {{ bank["bank_name"] }}
+                        </td>
+
+                        <td style="padding:12px;">
+                            {{ bank["account_name"] }}
+                        </td>
+
+                        <td style="padding:12px;">
+                            {{ bank["account_number"] }}
+                        </td>
+
+                        <td style="padding:12px;">
+                            {% if bank["is_verified"] %}
+                                <span style="color:#087f5b;font-weight:700;">
+                                    Verified
+                                </span>
+                            {% else %}
+                                <span style="color:#b42318;font-weight:700;">
+                                    Not Verified
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <td style="padding:12px;">
+                            {% if not bank["is_verified"] %}
+                                <form method="POST"
+                                      action="{{ url_for('admin_verify_bank', bank_id=bank['id']) }}">
+                                    <button type="submit" class="btn small">
+                                        Verify
+                                    </button>
+                                </form>
+                            {% else %}
+                                <span class="muted">Verified</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="muted">No bank accounts found.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

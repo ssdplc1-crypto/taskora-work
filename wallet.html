@@ -1,19 +1,234 @@
 {% extends "base.html" %}
+
 {% block title %}Wallet — TASKORA WORK{% endblock %}
+
 {% block content %}
-<div class="page-head"><div><span class="eyebrow">WALLET</span><h1>Your earnings</h1></div></div>
-<div class="stats"><div class="stat"><span>Available</span><strong>₦{{ "{:,}".format(balance) }}</strong></div><div class="stat"><span>Pending</span><strong>₦{{ "{:,}".format(pending) }}</strong></div><div class="stat"><span>Minimum</span><strong>₦{{ "{:,}".format(min_withdrawal) }}</strong></div></div>
-<div class="grid two">
-<section class="form-card">
-<h2>Weekly withdrawal</h2><p>Withdrawal requests open every Friday. Minimum is ₦5,000.</p>
-<form method="post" action="{{ url_for('withdraw') }}">
-<label>Amount<input type="number" name="amount" min="{{ min_withdrawal }}" step="1" required></label>
-<label>Bank account<select name="bank_id" required><option value="">Select account</option>{% for b in banks %}<option value="{{ b.id }}">{{ b.bank_name }} · {{ b.account_number }}{% if b.account_name %} · {{ b.account_name }}{% endif %}</option>{% endfor %}</select></label>
-<button class="btn full" type="submit">Request Withdrawal</button>
-</form>
-<a class="text-link" href="{{ url_for('profile') }}">Add/verify bank account</a>
-</section>
-<section class="card"><h2>Recent withdrawals</h2><div class="table-wrap"><table><tr><th>Amount</th><th>Status</th></tr>{% for w in withdrawals %}<tr><td>₦{{ "{:,}".format(w.amount) }}</td><td><span class="status {{ w.status }}">{{ w.status }}</span></td></tr>{% else %}<tr><td colspan="2">No withdrawals yet.</td></tr>{% endfor %}</table></div></section>
+
+<div class="wallet-page">
+
+  <!-- HEADER -->
+  <div class="wallet-header">
+    <div>
+      <span class="eyebrow">WALLET</span>
+      <h1>Your earnings</h1>
+      <p>Manage your balance, withdrawals and earnings history.</p>
+    </div>
+  </div>
+
+
+  <!-- BALANCE SUMMARY -->
+  <div class="wallet-stats">
+
+    <div class="wallet-stat available">
+      <div class="wallet-stat-label">Available</div>
+      <div class="wallet-stat-value">
+        ₦{{ "{:,}".format(balance) }}
+      </div>
+      <div class="wallet-stat-note">Ready to withdraw</div>
+    </div>
+
+    <div class="wallet-stat pending">
+      <div class="wallet-stat-label">Pending</div>
+      <div class="wallet-stat-value">
+        ₦{{ "{:,}".format(pending) }}
+      </div>
+      <div class="wallet-stat-note">Under review</div>
+    </div>
+
+    <div class="wallet-stat minimum">
+      <div class="wallet-stat-label">Minimum withdrawal</div>
+      <div class="wallet-stat-value">
+        ₦{{ "{:,}".format(min_withdrawal) }}
+      </div>
+      <div class="wallet-stat-note">Weekly withdrawal</div>
+    </div>
+
+  </div>
+
+
+  <!-- WITHDRAWAL -->
+  <section class="wallet-card withdrawal-card">
+
+    <div class="wallet-card-head">
+      <div>
+        <span class="eyebrow">WITHDRAW</span>
+        <h2>Request a withdrawal</h2>
+        <p>
+          Withdrawal requests open every Friday.
+          Minimum is ₦{{ "{:,}".format(min_withdrawal) }}.
+        </p>
+      </div>
+    </div>
+
+    <form
+      method="post"
+      action="{{ url_for('withdraw') }}"
+      class="withdraw-form"
+    >
+
+      <div class="form-field">
+        <label for="withdraw-amount">
+          Amount
+        </label>
+
+        <div class="input-money">
+          <span>₦</span>
+          <input
+            id="withdraw-amount"
+            type="number"
+            name="amount"
+            min="{{ min_withdrawal }}"
+            step="1"
+            placeholder="5,000"
+            required
+          >
+        </div>
+      </div>
+
+
+      <div class="form-field">
+        <label for="bank-account">
+          Bank account
+        </label>
+
+        <select
+          id="bank-account"
+          name="bank_id"
+          required
+        >
+          <option value="">Select bank account</option>
+
+          {% for b in banks %}
+            <option value="{{ b.id }}">
+              {{ b.bank_name }} · {{ b.account_number }}
+              {% if b.account_name %}
+                · {{ b.account_name }}
+              {% endif %}
+            </option>
+          {% endfor %}
+
+        </select>
+      </div>
+
+
+      <button
+        class="btn full withdraw-button"
+        type="submit"
+      >
+        Request Withdrawal
+      </button>
+
+    </form>
+
+
+    <a
+      class="bank-link"
+      href="{{ url_for('profile') }}"
+    >
+      <span>Add or verify bank account</span>
+      <span>→</span>
+    </a>
+
+  </section>
+
+
+  <!-- RECENT WITHDRAWALS -->
+  <section class="wallet-card">
+
+    <div class="wallet-card-head">
+      <div>
+        <span class="eyebrow">WITHDRAWALS</span>
+        <h2>Recent withdrawals</h2>
+        <p>Your latest withdrawal requests.</p>
+      </div>
+    </div>
+
+
+    <div class="withdrawal-list">
+
+      {% for w in withdrawals %}
+
+        <div class="withdrawal-item">
+
+          <div class="withdrawal-main">
+            <strong>
+              ₦{{ "{:,}".format(w.amount) }}
+            </strong>
+
+            <span>
+              Withdrawal request
+            </span>
+          </div>
+
+          <span class="status {{ w.status }}">
+            {{ w.status }}
+          </span>
+
+        </div>
+
+      {% else %}
+
+        <div class="wallet-empty">
+          <div class="wallet-empty-icon">₦</div>
+          <strong>No withdrawals yet</strong>
+          <span>Your withdrawal requests will appear here.</span>
+        </div>
+
+      {% endfor %}
+
+    </div>
+
+  </section>
+
+
+  <!-- EARNINGS HISTORY -->
+  <section class="wallet-card earnings-card">
+
+    <div class="wallet-card-head">
+      <div>
+        <span class="eyebrow">LEDGER</span>
+        <h2>Earnings history</h2>
+        <p>Track your completed earnings.</p>
+      </div>
+    </div>
+
+
+    <div class="earnings-list">
+
+      {% for x in ledger %}
+
+        <div class="earning-item">
+
+          <div class="earning-info">
+            <strong>
+              {{ x.description }}
+            </strong>
+
+            <span>
+              {{ x.status }}
+            </span>
+          </div>
+
+          <div class="earning-amount">
+            ₦{{ "{:,}".format(x.amount) }}
+          </div>
+
+        </div>
+
+      {% else %}
+
+        <div class="wallet-empty">
+          <div class="wallet-empty-icon">✓</div>
+          <strong>No earnings yet</strong>
+          <span>Completed task earnings will appear here.</span>
+        </div>
+
+      {% endfor %}
+
+    </div>
+
+  </section>
+
 </div>
-<section class="section"><div class="section-head"><span class="eyebrow">LEDGER</span><h2>Earnings history</h2></div><div class="table-wrap"><table><tr><th>Description</th><th>Amount</th><th>Status</th></tr>{% for x in ledger %}<tr><td>{{ x.description }}</td><td>₦{{ "{:,}".format(x.amount) }}</td><td>{{ x.status }}</td></tr>{% else %}<tr><td colspan="3">No earnings yet.</td></tr>{% endfor %}</table></div></section>
+
 {% endblock %}

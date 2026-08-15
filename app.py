@@ -1493,7 +1493,23 @@ def health():
 def not_found(_):
     return render_template("404.html"), 404
 
+# TASKORA WORK — Legal/Support routes
+# Add these three routes to the current app.py.
+# Place them before the /health route (or anywhere before init_db()).
+# Do NOT replace the existing withdrawal, task, wallet, activation, or database code.
 
+@app.route("/terms")
+def terms():
+    return render_template("terms.html")
+
+@app.route("/privacy")
+def privacy():
+    return render_template("privacy.html")
+
+@app.route("/support")
+def support():
+    return render_template("support.html")
+    
 init_db()
 
 if __name__ == "__main__":

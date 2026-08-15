@@ -900,3 +900,379 @@ table {
     font-size: 11px;
   }
   }
+
+/* =========================================
+   TASKORA WALLET — MOBILE APP UI
+   ========================================= */
+
+.wallet-page {
+  width: 100%;
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.wallet-header {
+  margin-bottom: 26px;
+}
+
+.wallet-header h1 {
+  margin: 5px 0 7px;
+  font-size: 40px;
+  line-height: 1.08;
+  letter-spacing: -1.4px;
+}
+
+.wallet-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+
+/* BALANCE CARDS */
+
+.wallet-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.wallet-stat {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 20px;
+  min-width: 0;
+  box-shadow: 0 8px 28px rgba(16,32,31,.045);
+}
+
+.wallet-stat-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.wallet-stat-value {
+  font-size: 27px;
+  font-weight: 900;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.wallet-stat-note {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.wallet-stat.available .wallet-stat-value {
+  color: var(--brand);
+}
+
+
+/* GENERAL WALLET CARD */
+
+.wallet-card {
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 18px;
+  box-shadow: 0 9px 30px rgba(16,32,31,.045);
+  min-width: 0;
+}
+
+.wallet-card-head {
+  margin-bottom: 20px;
+}
+
+.wallet-card-head h2 {
+  margin: 5px 0 6px;
+  font-size: 25px;
+  line-height: 1.15;
+}
+
+.wallet-card-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  max-width: 650px;
+}
+
+
+/* WITHDRAWAL FORM */
+
+.withdraw-form {
+  display: grid;
+  gap: 17px;
+}
+
+.form-field {
+  width: 100%;
+}
+
+.form-field label {
+  margin: 0 0 7px;
+  font-size: 13px;
+}
+
+.form-field input,
+.form-field select {
+  margin-top: 0;
+  min-height: 48px;
+  border-radius: 12px;
+  font-size: 16px;
+}
+
+.input-money {
+  position: relative;
+}
+
+.input-money > span {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-weight: 800;
+  z-index: 1;
+}
+
+.input-money input {
+  padding-left: 34px;
+}
+
+.withdraw-button {
+  min-height: 50px;
+  margin-top: 3px;
+  border-radius: 13px;
+  font-size: 14px;
+}
+
+.bank-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 17px;
+  padding: 13px 15px;
+  border: 1px solid #cce4e1;
+  background: #f3faf9;
+  color: var(--brand);
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+
+/* WITHDRAWAL LIST */
+
+.withdrawal-list,
+.earnings-list {
+  display: grid;
+  gap: 10px;
+}
+
+.withdrawal-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fbfdfd;
+}
+
+.withdrawal-main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.withdrawal-main strong {
+  font-size: 17px;
+}
+
+.withdrawal-main span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+
+/* EARNINGS */
+
+.earnings-card {
+  margin-bottom: 0;
+}
+
+.earning-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fbfdfd;
+}
+
+.earning-info {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.earning-info strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.earning-info span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.earning-amount {
+  flex: 0 0 auto;
+  color: var(--brand);
+  font-size: 15px;
+  font-weight: 850;
+}
+
+
+/* EMPTY STATE */
+
+.wallet-empty {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 5px;
+  padding: 30px 15px;
+  color: var(--muted);
+}
+
+.wallet-empty-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 5px;
+  border-radius: 50%;
+  background: var(--soft);
+  color: var(--brand);
+  font-weight: 900;
+}
+
+.wallet-empty strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.wallet-empty span {
+  font-size: 12px;
+}
+
+
+/* MOBILE */
+
+@media (max-width: 850px) {
+
+  .wallet-page {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .wallet-header {
+    margin-bottom: 20px;
+  }
+
+  .wallet-header h1 {
+    font-size: 34px;
+    letter-spacing: -1px;
+  }
+
+  .wallet-stats {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .wallet-stat {
+    padding: 17px;
+    border-radius: 16px;
+  }
+
+  .wallet-stat-value {
+    font-size: 25px;
+  }
+
+  .wallet-card {
+    padding: 18px 15px;
+    border-radius: 17px;
+    margin-bottom: 14px;
+  }
+
+  .wallet-card-head {
+    margin-bottom: 17px;
+  }
+
+  .wallet-card-head h2 {
+    font-size: 22px;
+  }
+
+  .withdrawal-item,
+  .earning-item {
+    padding: 13px;
+  }
+
+  .earning-item {
+    align-items: flex-start;
+  }
+
+  .earning-amount {
+    white-space: nowrap;
+  }
+
+}
+
+
+/* SMALL PHONES */
+
+@media (max-width: 480px) {
+
+  .wallet-header h1 {
+    font-size: 31px;
+  }
+
+  .wallet-header p {
+    font-size: 13px;
+  }
+
+  .wallet-stat-value {
+    font-size: 24px;
+  }
+
+  .wallet-card {
+    padding: 17px 13px;
+  }
+
+  .wallet-card-head h2 {
+    font-size: 21px;
+  }
+
+  .withdrawal-item {
+    padding: 12px;
+  }
+
+  .withdrawal-main strong {
+    font-size: 16px;
+  }
+
+  .status {
+    font-size: 10px;
+    padding: 4px 7px;
+  }
+
+}

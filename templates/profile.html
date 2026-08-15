@@ -12,6 +12,11 @@
 <label>Account name<input name="account_name" placeholder="Name returned by bank verification"></label>
 <button class="btn" type="submit">Save bank account</button>
 </form>
+  <div style="margin-top:20px;">
+    <a href="{{ url_for('change_password') }}">
+        Change Password
+    </a>
+  </div>
 </div>
 <section class="section"><div class="section-head"><span class="eyebrow">BANK ACCOUNTS</span><h2>Saved accounts</h2></div>
 <div class="grid two">{% for b in banks %}<div class="card"><h3>{{ b.bank_name }}</h3><p>****{{ b.account_number[-4:] }}</p><p>{{ b.account_name or "Name not verified" }}</p><span class="status">{{ "Verified" if b.is_verified else "Pending verification" }}</span></div>{% else %}<div class="empty">No bank accounts saved.</div>{% endfor %}</div></section>

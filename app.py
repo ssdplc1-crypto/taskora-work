@@ -1530,6 +1530,60 @@ def admin_refresh_withdrawal(withdrawal_id):
         flash(str(e), "error")
     return redirect(url_for("admin_withdrawals"))
 
+@app.route("/admin/change-password", methods=["GET", "POST"])
+@admin_required
+def admin_change_password():
+    u = current_user()
+
+    if request.method == "POST":
+        current_password = request.form.get("current_password", "")
+        new_password = request.form.get("new_password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        if not current_password or not new_password or not confirm_password:
+            flash("Please fill in all password fields.", "error")
+            return redirect(url_for("admin_change_password"))
+
+        if not check_password_hash(u["password_hash"], current_password):
+            flash("Current password is incorrect.", "error")
+            return redirect(url_for("admin_change_password"))
+
+        if len(new_password) < 8:
+            flash("New password must be at least 8 characters.", "error")
+            return redirect(url_for("admin_change_password"))
+
+        if new_password != confirm_password:
+            flash("New passwords do not match.", "error")
+            return redirect(url_for("admin_change_password"))
+
+        if check_password_hash(u["password_hash"], new_password):
+            flash("New password must be different from your current password.", "error")
+            return redirect(url_for("admin_change_password"))
+
+        new_hash = generate_password_hash(new_password)
+
+        conn = db()
+
+        try:
+            conn.execute(
+                "UPDATE users SET password_hash=? WHERE id=? AND role='admin'",
+                (new_hash, u["id"])
+            )
+            conn.commit()
+
+            flash("Admin password changed successfully.", "success")
+            return redirect(url_for("admin_dashboard"))
+
+        except Exception:
+            conn.rollback()
+            flash("Unable to change admin password. Please try again.", "error")
+            return redirect(url_for("admin_change_password"))
+
+        finally:
+            conn.close()
+
+    return render_template("admin_change_password.html", user=u)
+
 @app.route("/health")
 def health():
     try:

@@ -648,3 +648,255 @@ footer{
     flex-direction:column;
   }
   }
+/* ================================
+   MOBILE APP POLISH
+   ================================ */
+
+html {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Prevent oversized elements from pushing the page */
+img,
+video,
+iframe,
+table {
+  max-width: 100%;
+}
+
+/* Better mobile navigation */
+@media (max-width: 850px) {
+
+  .topbar {
+    width: 100%;
+    padding: 10px 12px;
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  .brand {
+    flex: 0 0 auto;
+    max-width: 48%;
+    overflow: hidden;
+  }
+
+  .brand-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .topbar nav {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 6px;
+    padding: 3px 0 5px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .topbar nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .topbar nav a {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .topbar nav .btn.small {
+    flex: 0 0 auto;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 100%;
+    padding: 22px 14px 55px;
+    overflow: hidden;
+  }
+
+  /* ================================
+     WALLET
+     ================================ */
+
+  .wallet,
+  .wallet-page,
+  .wallet-container {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .stats {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin: 18px 0;
+  }
+
+  .stat {
+    width: 100%;
+    min-width: 0;
+    padding: 18px;
+    border-radius: 16px;
+  }
+
+  .stat span {
+    font-size: 12px;
+  }
+
+  .stat strong {
+    font-size: 26px;
+  }
+
+  /* All major wallet sections become full-width cards */
+  .section {
+    width: 100%;
+    max-width: 100%;
+    margin: 30px 0;
+  }
+
+  .form-card,
+  .card,
+  .table-wrap {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .form-card {
+    padding: 20px 16px;
+    border-radius: 18px;
+  }
+
+  .form-card h2 {
+    font-size: 22px;
+  }
+
+  /* Inputs */
+  input,
+  textarea,
+  select {
+    width: 100%;
+    max-width: 100%;
+    font-size: 16px;
+  }
+
+  /* Withdrawal button */
+  .btn.full {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  /* Recent withdrawals / earnings */
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 15px;
+  }
+
+  table {
+    width: 100%;
+    min-width: 0;
+  }
+
+  th,
+  td {
+    padding: 12px 10px;
+    font-size: 12px;
+  }
+
+  /* Page headings */
+  .page-head {
+    width: 100%;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .page-head h1 {
+    font-size: 32px;
+    line-height: 1.1;
+  }
+
+  /* Better section headings */
+  .section-head h2 {
+    font-size: 25px;
+  }
+
+  /* Don't allow long text to break layout */
+  h1,
+  h2,
+  h3,
+  p,
+  a,
+  span,
+  strong {
+    overflow-wrap: anywhere;
+  }
+
+  /* Footer */
+  footer {
+    width: 100%;
+    padding: 22px 14px;
+    text-align: center;
+  }
+}
+
+
+/* ================================
+   EXTRA SMALL PHONES
+   ================================ */
+
+@media (max-width: 480px) {
+
+  .topbar {
+    padding: 9px 10px;
+  }
+
+  .brand-name {
+    font-size: 15px;
+  }
+
+  .container {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .stat {
+    padding: 17px 16px;
+  }
+
+  .stat strong {
+    font-size: 24px;
+  }
+
+  .form-card {
+    padding: 18px 14px;
+  }
+
+  .section {
+    margin: 26px 0;
+  }
+
+  .section-head h2 {
+    font-size: 23px;
+  }
+
+  th,
+  td {
+    padding: 11px 8px;
+    font-size: 11px;
+  }
+  }

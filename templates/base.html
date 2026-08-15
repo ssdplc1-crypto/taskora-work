@@ -429,15 +429,16 @@
 
   </main>
 
-  <footer>
-    <div>
-      TASKORA WORK · Learn • Work • Earn
-    </div>
-
-    <div>
-      © 2026 TASKORA
-    </div>
-  </footer>
+  <!-- Replace ONLY the existing footer in base.html with this. -->
+<footer>
+  <div>TASKORA WORK · Learn • Work • Earn</div>
+  <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:8px;">
+    <a href="{{ url_for('terms') }}">Terms & Conditions</a>
+    <a href="{{ url_for('privacy') }}">Privacy Policy</a>
+    <a href="{{ url_for('support') }}">Support</a>
+  </div>
+  <div style="margin-top:8px;">© 2026 TASKORA</div>
+</footer>
 
   <script>
   (function () {

@@ -2,373 +2,355 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"
-  >
-
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0f766e">
-  <meta
-    name="description"
-    content="TASKORA WORK - Learn, Work, Earn."
-  >
+  <meta name="description" content="TASKORA WORK - Learn, Work, Earn.">
+
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
 
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta
-    name="apple-mobile-web-app-status-bar-style"
-    content="default"
-  >
-  <meta
-    name="apple-mobile-web-app-title"
-    content="TASKORA WORK"
-  >
+  <meta name="apple-mobile-web-app-title" content="TASKORA WORK">
 
-  <link
-    rel="manifest"
-    href="{{ url_for('static', filename='manifest.json') }}"
-  >
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
-  <link
-    rel="icon"
-    type="image/png"
-    href="{{ url_for('static', filename='favicon.png') }}"
-  >
+  <style>
+    html, body {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      overflow-x: hidden;
+      -webkit-text-size-adjust: 100%;
+    }
 
-  <link
-    rel="apple-touch-icon"
-    href="{{ url_for('static', filename='apple-touch-icon.png') }}"
-  >
+    body { overscroll-behavior-x: none; }
 
-  <link
-    rel="stylesheet"
-    href="{{ url_for('static', filename='style.css') }}"
-  >
+    input, textarea, select, button { font-size: 16px; }
+
+    /* ---------- Splash ---------- */
+    #taskora-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0f766e;
+      color: #fff;
+      opacity: 1;
+      visibility: visible;
+      transition: opacity .35s ease, visibility .35s ease;
+    }
+
+    #taskora-splash.splash-hide {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .splash-inner {
+      text-align: center;
+      padding: 30px;
+      animation: taskoraSplashIn .65s ease both;
+    }
+
+    .splash-logo {
+      width: 82px;
+      height: 82px;
+      border-radius: 22px;
+      object-fit: cover;
+      margin-bottom: 18px;
+      box-shadow: 0 12px 35px rgba(0,0,0,.22);
+      animation: taskoraLogoPulse 1.25s ease-in-out infinite;
+    }
+
+    .splash-title {
+      font-size: 25px;
+      font-weight: 900;
+      letter-spacing: -.6px;
+    }
+
+    .splash-subtitle {
+      margin-top: 6px;
+      font-size: 13px;
+      opacity: .84;
+    }
+
+    @keyframes taskoraSplashIn {
+      from { opacity: 0; transform: translateY(14px) scale(.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes taskoraLogoPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+    }
+
+    /* ---------- Install fallback modal ---------- */
+    #taskora-install-help[hidden] { display: none !important; }
+
+    #taskora-install-help {
+      position: fixed;
+      inset: 0;
+      z-index: 100000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0,0,0,.58);
+    }
+
+    .taskora-install-card {
+      width: min(440px, 100%);
+      background: #fff;
+      color: #10201f;
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 25px 80px rgba(0,0,0,.28);
+    }
+
+    .taskora-install-card h2 {
+      margin: 0 0 10px;
+      font-size: 22px;
+    }
+
+    .taskora-install-card p {
+      color: #647371;
+      line-height: 1.6;
+      margin: 8px 0;
+    }
+
+    .taskora-install-close {
+      width: 100%;
+      margin-top: 14px;
+    }
+
+    [data-install-app] { white-space: nowrap; }
+
+    @media (max-width: 850px) {
+      .topbar { overflow: visible; }
+      .topbar nav { overflow: visible; }
+    }
+  </style>
 
   <title>{% block title %}TASKORA WORK{% endblock %}</title>
 </head>
 
 <body>
 
-<header class="topbar">
+<div id="taskora-splash" aria-label="Loading TASKORA WORK">
+  <div class="splash-inner">
+    <img
+      class="splash-logo"
+      src="{{ url_for('static', filename='apple-touch-icon.png') }}"
+      alt="TASKORA WORK"
+      onerror="this.style.display='none';"
+    >
+    <div class="splash-title">TASKORA WORK</div>
+    <div class="splash-subtitle">Learn · Work · Earn</div>
+  </div>
+</div>
 
-  <a
-    class="brand"
-    href="{{ url_for('index') }}"
-    aria-label="TASKORA WORK Home"
-  >
+<div id="taskora-install-help" hidden>
+  <div class="taskora-install-card" role="dialog" aria-modal="true">
+    <h2>Install TASKORA WORK</h2>
+    <p id="taskora-install-text">
+      If the install prompt does not appear automatically, open your browser menu
+      (⋮) and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.
+    </p>
+    <button type="button" class="btn full taskora-install-close" id="taskora-install-close">
+      Close
+    </button>
+  </div>
+</div>
+
+<header class="topbar">
+  <a class="brand" href="{{ url_for('index') }}" aria-label="TASKORA WORK Home">
     <span class="brandmark">T</span>
     TASKORA <b>WORK</b>
   </a>
 
   <nav>
-
     {% if current_user %}
-
       {% if current_user.role == 'admin' %}
-
-        <a href="{{ url_for('admin_dashboard') }}">
-          Admin
-        </a>
-
-        <a href="{{ url_for('admin_submissions') }}">
-          Submissions
-        </a>
-
-        <a href="{{ url_for('admin_withdrawals') }}">
-          Withdrawals
-        </a>
-
-        <a href="{{ url_for('admin_users') }}">
-          Workers
-        </a>
-
+        <a href="{{ url_for('admin_dashboard') }}">Admin</a>
+        <a href="{{ url_for('admin_submissions') }}">Submissions</a>
+        <a href="{{ url_for('admin_withdrawals') }}">Withdrawals</a>
+        <a href="{{ url_for('admin_users') }}">Workers</a>
       {% else %}
-
-        <a href="{{ url_for('dashboard') }}">
-          Dashboard
-        </a>
-
-        <a href="{{ url_for('tasks') }}">
-          Tasks
-        </a>
-
-        <a href="{{ url_for('wallet') }}">
-          Wallet
-        </a>
-
-        <a href="{{ url_for('profile') }}">
-          Profile
-        </a>
-
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('tasks') }}">Tasks</a>
+        <a href="{{ url_for('wallet') }}">Wallet</a>
+        <a href="{{ url_for('profile') }}">Profile</a>
       {% endif %}
 
-      <button
-        type="button"
-        class="btn small install-btn"
-        data-install-app
-        hidden
-      >
+      <button type="button" class="btn small" data-install-app>
         Install App
       </button>
 
-      <a
-        class="btn small"
-        href="{{ url_for('logout') }}"
-      >
-        Logout
-      </a>
-
+      <a class="btn small" href="{{ url_for('logout') }}">Logout</a>
     {% else %}
-
-      <a href="{{ url_for('login') }}">
-        Login
-      </a>
-
-      <a
-        class="btn small"
-        href="{{ url_for('register') }}"
-      >
-        Get Started
-      </a>
-
+      <a href="{{ url_for('login') }}">Login</a>
+      <a class="btn small" href="{{ url_for('register') }}">Get Started</a>
     {% endif %}
-
   </nav>
-
 </header>
 
-
 <main class="container">
-
   {% with messages = get_flashed_messages(with_categories=true) %}
-
     {% for category, message in messages %}
-
-      <div class="alert {{ category }}">
-        {{ message }}
-      </div>
-
+      <div class="alert {{ category }}">{{ message }}</div>
     {% endfor %}
-
   {% endwith %}
 
   {% block content %}{% endblock %}
-
 </main>
 
-
 <footer>
-    <div>
-        TASKORA WORK · Learn • Work • Earn
-    </div>
+  <div>TASKORA WORK · Learn • Work • Earn</div>
 
-    <div class="footer-links">
-        <a href="{{ url_for('terms') }}">Terms & Conditions</a>
-        <a href="{{ url_for('privacy') }}">Privacy Policy</a>
-        <a href="{{ url_for('support') }}">Support</a>
-    </div>
+  <div class="footer-links">
+    <a href="{{ url_for('terms') }}">Terms &amp; Conditions</a>
+    <a href="{{ url_for('privacy') }}">Privacy Policy</a>
+    <a href="{{ url_for('support') }}">Support</a>
+  </div>
 
-    <div>
-        © 2026 TASKORA
-    </div>
+  <div>© 2026 TASKORA</div>
 </footer>
-
 
 <script>
 (function () {
-
   "use strict";
 
-
-  /* =========================================================
+  /* =========================
      SERVICE WORKER
-  ========================================================= */
-
+  ========================= */
   if ("serviceWorker" in navigator) {
-
     window.addEventListener("load", function () {
-
-      navigator.serviceWorker
-        .register("/static/sw.js", {
-          scope: "/"
-        })
+      navigator.serviceWorker.register("/static/sw.js", { scope: "/" })
         .then(function (registration) {
-
-          console.log(
-            "TASKORA Service Worker registered.",
-            registration.scope
-          );
-
-          if (registration.update) {
-            registration.update();
-          }
-
+          if (registration.update) registration.update();
+          console.log("TASKORA Service Worker registered:", registration.scope);
         })
         .catch(function (error) {
-
-          console.error(
-            "TASKORA Service Worker error:",
-            error
-          );
-
+          console.error("TASKORA Service Worker error:", error);
         });
-
     });
-
   }
 
-
-  /* =========================================================
+  /* =========================
      INSTALL APP
-  ========================================================= */
-
-  const installButtons =
-    document.querySelectorAll("[data-install-app]");
-
+  ========================= */
   let deferredInstallPrompt = null;
 
+  const installButtons = document.querySelectorAll("[data-install-app]");
+  const help = document.getElementById("taskora-install-help");
+  const helpText = document.getElementById("taskora-install-text");
+  const closeHelp = document.getElementById("taskora-install-close");
 
-  function showInstallButtons() {
-
-    installButtons.forEach(function (button) {
-      button.hidden = false;
-    });
-
+  function isStandalone() {
+    return (
+      (window.matchMedia &&
+        window.matchMedia("(display-mode: standalone)").matches) ||
+      window.navigator.standalone === true
+    );
   }
 
+  function showInstallHelp(message) {
+    if (!help) return;
+    if (message) helpText.innerHTML = message;
+    help.hidden = false;
+  }
 
-  function hideInstallButtons() {
+  function hideInstallHelp() {
+    if (help) help.hidden = true;
+  }
 
+  if (closeHelp) closeHelp.addEventListener("click", hideInstallHelp);
+
+  if (help) {
+    help.addEventListener("click", function (event) {
+      if (event.target === help) hideInstallHelp();
+    });
+  }
+
+  window.addEventListener("beforeinstallprompt", function (event) {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    console.log("TASKORA install prompt is ready.");
+  });
+
+  installButtons.forEach(function (button) {
+    button.addEventListener("click", async function () {
+      if (isStandalone()) {
+        showInstallHelp(
+          "TASKORA WORK is already installed on this device."
+        );
+        return;
+      }
+
+      if (deferredInstallPrompt) {
+        try {
+          deferredInstallPrompt.prompt();
+          const result = await deferredInstallPrompt.userChoice;
+          console.log("TASKORA install result:", result.outcome);
+          deferredInstallPrompt = null;
+
+          if (result.outcome === "accepted") {
+            button.hidden = true;
+            return;
+          }
+        } catch (error) {
+          console.error("TASKORA install error:", error);
+        }
+      }
+
+      const ua = navigator.userAgent || "";
+      const isIOS = /iPad|iPhone|iPod/i.test(ua);
+
+      if (isIOS) {
+        showInstallHelp(
+          "On iPhone/iPad, tap <strong>Share</strong> in Safari, then choose <strong>Add to Home Screen</strong>."
+        );
+      } else {
+        showInstallHelp(
+          "Chrome did not provide the automatic install prompt yet. Tap the browser <strong>⋮</strong> menu and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>. If you do not see it, reload TASKORA once after the page finishes loading."
+        );
+      }
+    });
+  });
+
+  window.addEventListener("appinstalled", function () {
+    deferredInstallPrompt = null;
     installButtons.forEach(function (button) {
       button.hidden = true;
     });
+  });
 
+  /* =========================
+     SPLASH
+     Always show on a fresh page load.
+     No sessionStorage is used.
+  ========================= */
+  const splash = document.getElementById("taskora-splash");
+
+  function hideSplash() {
+    if (!splash) return;
+    splash.classList.add("splash-hide");
+    setTimeout(function () {
+      if (splash && splash.parentNode) splash.remove();
+    }, 400);
   }
 
+  if (splash) {
+    window.addEventListener("load", function () {
+      setTimeout(hideSplash, 1200);
+    });
 
-  window.addEventListener(
-    "beforeinstallprompt",
-    function (event) {
-
-      event.preventDefault();
-
-      deferredInstallPrompt = event;
-
-      showInstallButtons();
-
-      console.log(
-        "TASKORA install prompt ready."
-      );
-
-    }
-  );
-
-
-  installButtons.forEach(function (button) {
-
-    button.addEventListener(
-      "click",
-      async function () {
-
-        if (!deferredInstallPrompt) {
-
-          alert(
-            "Install option is not ready yet. " +
-            "Please wait a moment and try again."
-          );
-
-          return;
-        }
-
-
-        try {
-
-          deferredInstallPrompt.prompt();
-
-          const result =
-            await deferredInstallPrompt.userChoice;
-
-
-          console.log(
-            "TASKORA install result:",
-            result.outcome
-          );
-
-
-          if (result.outcome === "accepted") {
-            hideInstallButtons();
-          }
-
-
-          deferredInstallPrompt = null;
-
-        } catch (error) {
-
-          console.error(
-            "TASKORA install error:",
-            error
-          );
-
-        }
-
-      }
-    );
-
-  });
-
-
-  window.addEventListener(
-    "appinstalled",
-    function () {
-
-      deferredInstallPrompt = null;
-
-      hideInstallButtons();
-
-      console.log(
-        "TASKORA WORK installed successfully."
-      );
-
-    }
-  );
-
-
-  /* =========================================================
-     PREVENT ACCIDENTAL BROWSER ZOOM
-  ========================================================= */
-
-  document.addEventListener(
-    "wheel",
-    function (event) {
-
-      if (event.ctrlKey) {
-        event.preventDefault();
-      }
-
-    },
-    { passive: false }
-  );
-
-
-  [
-    "gesturestart",
-    "gesturechange",
-    "gestureend"
-  ].forEach(function (eventName) {
-
-    document.addEventListener(
-      eventName,
-      function (event) {
-        event.preventDefault();
-      },
-      { passive: false }
-    );
-
-  });
-
-
+    setTimeout(hideSplash, 2200);
+  }
 })();
 </script>
 

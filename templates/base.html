@@ -4,9 +4,9 @@
   <meta charset="utf-8">
 
   <meta
-  name="viewport"
-  content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
->
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"
+  >
 
   <meta name="theme-color" content="#0f766e">
   <meta
@@ -18,14 +18,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta
     name="apple-mobile-web-app-status-bar-style"
-    content="black-translucent"
+    content="default"
   >
   <meta
     name="apple-mobile-web-app-title"
-    content="TASKORA WORK"
-  >
-  <meta
-    name="application-name"
     content="TASKORA WORK"
   >
 
@@ -37,14 +33,12 @@
   <link
     rel="icon"
     type="image/png"
-    sizes="32x32"
-    href="{{ url_for('static', filename='icons/icon-192.png') }}"
+    href="{{ url_for('static', filename='favicon.png') }}"
   >
 
   <link
     rel="apple-touch-icon"
-    sizes="180x180"
-    href="{{ url_for('static', filename='icons/icon-192.png') }}"
+    href="{{ url_for('static', filename='apple-touch-icon.png') }}"
   >
 
   <link
@@ -52,549 +46,327 @@
     href="{{ url_for('static', filename='style.css') }}"
   >
 
-  <title>
-    {% block title %}TASKORA WORK{% endblock %}
-  </title>
-
-  <style>
-    .brand {
-      display: inline-flex;
-      align-items: center;
-      gap: 9px;
-      white-space: nowrap;
-    }
-
-    .brand-logo {
-      width: 36px;
-      height: 36px;
-      border-radius: 11px;
-      object-fit: cover;
-      display: block;
-      background: #0f766e;
-      flex: 0 0 36px;
-    }
-
-    .brand-fallback {
-      width: 36px;
-      height: 36px;
-      border-radius: 11px;
-      background: linear-gradient(135deg, #0f766e, #115e59);
-      color: #fff;
-      display: none;
-      place-items: center;
-      font-size: 18px;
-      font-weight: 900;
-      line-height: 1;
-      flex: 0 0 36px;
-    }
-
-    .brand-name {
-      font-size: 18px;
-      font-weight: 850;
-      letter-spacing: -.5px;
-    }
-
-    .brand-name b {
-      color: #0f766e;
-    }
-
-    .taskora-splash {
-      position: fixed;
-      inset: 0;
-      z-index: 99999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      background:
-        radial-gradient(
-          circle at 50% 35%,
-          rgba(15, 118, 110, .18),
-          transparent 38%
-        ),
-        #fbfdfd;
-      opacity: 1;
-      visibility: visible;
-      transition:
-        opacity .55s ease,
-        visibility .55s ease;
-    }
-
-    .taskora-splash.splash-hide {
-      opacity: 0;
-      visibility: hidden;
-      pointer-events: none;
-    }
-
-    .splash-orb {
-      position: absolute;
-      width: 280px;
-      height: 280px;
-      border-radius: 50%;
-      background: rgba(15, 118, 110, .08);
-      filter: blur(2px);
-    }
-
-    .splash-content {
-      position: relative;
-      z-index: 2;
-      text-align: center;
-      padding: 30px;
-    }
-
-    .splash-logo {
-      width: 92px;
-      height: 92px;
-      object-fit: cover;
-      border-radius: 25px;
-      display: block;
-      margin: 0 auto 18px;
-      box-shadow:
-        0 18px 45px rgba(15, 118, 110, .18);
-      background: #0f766e;
-    }
-
-    .splash-fallback {
-      width: 92px;
-      height: 92px;
-      border-radius: 25px;
-      margin: 0 auto 18px;
-      display: none;
-      place-items: center;
-      background: linear-gradient(135deg, #0f766e, #115e59);
-      color: #fff;
-      font-size: 44px;
-      font-weight: 900;
-      box-shadow:
-        0 18px 45px rgba(15, 118, 110, .18);
-    }
-
-    .splash-wordmark {
-      font-size: 25px;
-      font-weight: 900;
-      letter-spacing: -.8px;
-      color: #10201f;
-    }
-
-    .splash-wordmark span {
-      color: #0f766e;
-    }
-
-    .splash-wordmark b {
-      color: #10201f;
-    }
-
-    .splash-tagline {
-      margin-top: 7px;
-      color: #647371;
-      font-size: 13px;
-      font-weight: 650;
-      letter-spacing: .3px;
-    }
-
-    .splash-loader {
-      width: 110px;
-      height: 4px;
-      margin: 24px auto 0;
-      overflow: hidden;
-      border-radius: 99px;
-      background: #dcebea;
-    }
-
-    .splash-loader span {
-      display: block;
-      width: 45%;
-      height: 100%;
-      border-radius: inherit;
-      background: #0f766e;
-      animation: taskoraLoader 1.2s ease-in-out infinite;
-    }
-
-    @keyframes taskoraLoader {
-      0% {
-        transform: translateX(-120%);
-      }
-
-      50% {
-        transform: translateX(110%);
-      }
-
-      100% {
-        transform: translateX(260%);
-      }
-    }
-
-    @media (max-width: 520px) {
-      .brand-logo,
-      .brand-fallback {
-        width: 32px;
-        height: 32px;
-        flex-basis: 32px;
-        border-radius: 9px;
-      }
-
-      .brand-name {
-        font-size: 16px;
-      }
-
-      .splash-logo,
-      .splash-fallback {
-        width: 82px;
-        height: 82px;
-        border-radius: 22px;
-      }
-
-      .splash-fallback {
-        font-size: 39px;
-      }
-
-      .splash-wordmark {
-        font-size: 22px;
-      }
-    }
-  </style>
+  <title>{% block title %}TASKORA WORK{% endblock %}</title>
 </head>
 
 <body>
 
-  <div
-    id="taskora-splash"
-    class="taskora-splash"
-    aria-hidden="true"
+<header class="topbar">
+
+  <a
+    class="brand"
+    href="{{ url_for('index') }}"
+    aria-label="TASKORA WORK Home"
   >
-    <div class="splash-orb"></div>
+    <span class="brandmark">T</span>
+    TASKORA <b>WORK</b>
+  </a>
 
-    <div class="splash-content">
+  <nav>
 
-      <img
-        class="splash-logo"
-        src="{{ url_for('static', filename='icons/icon-512.png') }}"
-        alt="TASKORA WORK"
-        onerror="
-          this.style.display='none';
-          var fallback=document.getElementById('splash-logo-fallback');
-          if(fallback){fallback.style.display='grid';}
-        "
-      >
+    {% if current_user %}
 
-      <div
-        id="splash-logo-fallback"
-        class="splash-fallback"
-      >
-        T
-      </div>
+      {% if current_user.role == 'admin' %}
 
-      <div class="splash-wordmark">
-        TASK<span>ORA</span> <b>WORK</b>
-      </div>
+        <a href="{{ url_for('admin_dashboard') }}">
+          Admin
+        </a>
 
-      <div class="splash-tagline">
-        Learn • Work • Earn
-      </div>
+        <a href="{{ url_for('admin_submissions') }}">
+          Submissions
+        </a>
 
-      <div class="splash-loader">
-        <span></span>
-      </div>
+        <a href="{{ url_for('admin_withdrawals') }}">
+          Withdrawals
+        </a>
 
-    </div>
-  </div>
+        <a href="{{ url_for('admin_users') }}">
+          Workers
+        </a>
 
-  <header class="topbar">
+      {% else %}
 
-    <a
-      class="brand"
-      href="{{ url_for('index') }}"
-      aria-label="TASKORA WORK Home"
-    >
+        <a href="{{ url_for('dashboard') }}">
+          Dashboard
+        </a>
 
-      <img
-        class="brand-logo"
-        src="{{ url_for('static', filename='icons/icon-192.png') }}"
-        alt="TASKORA"
-        onerror="
-          this.style.display='none';
-          var fallback=document.getElementById('brand-logo-fallback');
-          if(fallback){fallback.style.display='grid';}
-        "
-      >
+        <a href="{{ url_for('tasks') }}">
+          Tasks
+        </a>
 
-      <span
-        id="brand-logo-fallback"
-        class="brand-fallback"
-      >
-        T
-      </span>
+        <a href="{{ url_for('wallet') }}">
+          Wallet
+        </a>
 
-      <span class="brand-name">
-        TASKORA <b>WORK</b>
-      </span>
+        <a href="{{ url_for('profile') }}">
+          Profile
+        </a>
 
-    </a>
-
-    <nav aria-label="Main navigation">
+      {% endif %}
 
       <button
         type="button"
-        class="btn small install-app-btn"
+        class="btn small install-btn"
         data-install-app
         hidden
       >
         Install App
       </button>
 
-      {% if current_user %}
+      <a
+        class="btn small"
+        href="{{ url_for('logout') }}"
+      >
+        Logout
+      </a>
 
-        {% if current_user.role == 'admin' %}
+    {% else %}
 
-          <a href="{{ url_for('admin_dashboard') }}">
-            Admin
-          </a>
+      <a href="{{ url_for('login') }}">
+        Login
+      </a>
 
-          <a href="{{ url_for('admin_submissions') }}">
-            Submissions
-          </a>
+      <a
+        class="btn small"
+        href="{{ url_for('register') }}"
+      >
+        Get Started
+      </a>
 
-          <a href="{{ url_for('admin_withdrawals') }}">
-            Withdrawals
-          </a>
+    {% endif %}
 
-          <a href="{{ url_for('admin_users') }}">
-            Workers
-          </a>
+  </nav>
 
-        {% else %}
+</header>
 
-          <a href="{{ url_for('dashboard') }}">
-            Dashboard
-          </a>
 
-          <a href="{{ url_for('tasks') }}">
-            Tasks
-          </a>
+<main class="container">
 
-          <a href="{{ url_for('wallet') }}">
-            Wallet
-          </a>
+  {% with messages = get_flashed_messages(with_categories=true) %}
 
-          <a href="{{ url_for('profile') }}">
-            Profile
-          </a>
+    {% for category, message in messages %}
 
-        {% endif %}
+      <div class="alert {{ category }}">
+        {{ message }}
+      </div>
 
-        <a
-          class="btn small"
-          href="{{ url_for('logout') }}"
-        >
-          Logout
-        </a>
+    {% endfor %}
 
-      {% else %}
+  {% endwith %}
 
-        <a href="{{ url_for('login') }}">
-          Login
-        </a>
+  {% block content %}{% endblock %}
 
-        <a
-          class="btn small"
-          href="{{ url_for('register') }}"
-        >
-          Get Started
-        </a>
+</main>
 
-      {% endif %}
 
-    </nav>
-
-      </header>
-        <main class="container">
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-
-      {% if messages %}
-
-        {% for category, message in messages %}
-
-          <div class="alert {{ category }}">
-            {{ message }}
-          </div>
-
-        {% endfor %}
-
-      {% endif %}
-
-    {% endwith %}
-
-    {% block content %}{% endblock %}
-
-  </main>
-
-  <!-- Replace ONLY the existing footer in base.html with this. -->
 <footer>
-  <div>TASKORA WORK · Learn • Work • Earn</div>
-  <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:8px;">
-    <a href="{{ url_for('terms') }}">Terms & Conditions</a>
-    <a href="{{ url_for('privacy') }}">Privacy Policy</a>
-    <a href="{{ url_for('support') }}">Support</a>
+
+  <div>
+    TASKORA WORK · Learn • Work • Earn
   </div>
-  <div style="margin-top:8px;">© 2026 TASKORA</div>
+
+  <div>
+    © 2026 TASKORA
+  </div>
+
 </footer>
 
-  <script>
-  (function () {
 
-    "use strict";
+<script>
+(function () {
 
-    const splash =
-      document.getElementById("taskora-splash");
+  "use strict";
 
-    const isStandalone =
-      window.matchMedia(
-        "(display-mode: standalone)"
-      ).matches ||
-      window.navigator.standalone === true;
 
-    const seenKey =
-      "taskora_splash_seen_v2";
+  /* =========================================================
+     SERVICE WORKER
+  ========================================================= */
 
-    function hideSplash() {
+  if ("serviceWorker" in navigator) {
 
-      if (!splash) {
-        return;
-      }
+    window.addEventListener("load", function () {
 
-      splash.classList.add("splash-hide");
+      navigator.serviceWorker
+        .register("/static/sw.js", {
+          scope: "/"
+        })
+        .then(function (registration) {
 
-      setTimeout(function () {
-
-        if (splash && splash.parentNode) {
-          splash.parentNode.removeChild(splash);
-        }
-
-      }, 650);
-    }
-
-    if (splash) {
-
-      try {
-
-        if (
-          sessionStorage.getItem(seenKey) === "1"
-        ) {
-
-          hideSplash();
-
-        } else {
-
-          sessionStorage.setItem(
-            seenKey,
-            "1"
+          console.log(
+            "TASKORA Service Worker registered.",
+            registration.scope
           );
 
-          setTimeout(
-            hideSplash,
-            isStandalone ? 1850 : 1650
+          if (registration.update) {
+            registration.update();
+          }
+
+        })
+        .catch(function (error) {
+
+          console.error(
+            "TASKORA Service Worker error:",
+            error
           );
-        }
 
-      } catch (error) {
+        });
 
-        setTimeout(
-          hideSplash,
-          1650
-        );
+    });
 
-      }
-    }
+  }
 
-    if ("serviceWorker" in navigator) {
 
-      window.addEventListener(
-        "load",
-        function () {
+  /* =========================================================
+     INSTALL APP
+  ========================================================= */
 
-          navigator.serviceWorker
-            .register(
-              "{{ url_for('static', filename='sw.js') }}",
-              {
-                scope: "/"
-              }
-            )
-            .catch(function () {
-              /* Do nothing if service worker
-                 registration fails. */
-            });
+  const installButtons =
+    document.querySelectorAll("[data-install-app]");
 
-        }
+  let deferredInstallPrompt = null;
+
+
+  function showInstallButtons() {
+
+    installButtons.forEach(function (button) {
+      button.hidden = false;
+    });
+
+  }
+
+
+  function hideInstallButtons() {
+
+    installButtons.forEach(function (button) {
+      button.hidden = true;
+    });
+
+  }
+
+
+  window.addEventListener(
+    "beforeinstallprompt",
+    function (event) {
+
+      event.preventDefault();
+
+      deferredInstallPrompt = event;
+
+      showInstallButtons();
+
+      console.log(
+        "TASKORA install prompt ready."
       );
+
     }
+  );
 
-    let deferredInstallPrompt = null;
 
-    window.addEventListener(
-      "beforeinstallprompt",
-      function (event) {
+  installButtons.forEach(function (button) {
 
+    button.addEventListener(
+      "click",
+      async function () {
+
+        if (!deferredInstallPrompt) {
+
+          alert(
+            "Install option is not ready yet. " +
+            "Please wait a moment and try again."
+          );
+
+          return;
+        }
+
+
+        try {
+
+          deferredInstallPrompt.prompt();
+
+          const result =
+            await deferredInstallPrompt.userChoice;
+
+
+          console.log(
+            "TASKORA install result:",
+            result.outcome
+          );
+
+
+          if (result.outcome === "accepted") {
+            hideInstallButtons();
+          }
+
+
+          deferredInstallPrompt = null;
+
+        } catch (error) {
+
+          console.error(
+            "TASKORA install error:",
+            error
+          );
+
+        }
+
+      }
+    );
+
+  });
+
+
+  window.addEventListener(
+    "appinstalled",
+    function () {
+
+      deferredInstallPrompt = null;
+
+      hideInstallButtons();
+
+      console.log(
+        "TASKORA WORK installed successfully."
+      );
+
+    }
+  );
+
+
+  /* =========================================================
+     PREVENT ACCIDENTAL BROWSER ZOOM
+  ========================================================= */
+
+  document.addEventListener(
+    "wheel",
+    function (event) {
+
+      if (event.ctrlKey) {
         event.preventDefault();
-
-        deferredInstallPrompt = event;
-
-        document
-          .querySelectorAll(
-            "[data-install-app]"
-          )
-          .forEach(function (button) {
-
-            button.hidden = false;
-
-            button.onclick = async function () {
-
-              if (!deferredInstallPrompt) {
-                return;
-              }
-
-              try {
-
-                deferredInstallPrompt.prompt();
-
-                await deferredInstallPrompt.userChoice;
-
-              } catch (error) {
-                /* User cancelled installation. */
-              }
-
-              deferredInstallPrompt = null;
-
-              button.hidden = true;
-
-            };
-
-          });
-
       }
+
+    },
+    { passive: false }
+  );
+
+
+  [
+    "gesturestart",
+    "gesturechange",
+    "gestureend"
+  ].forEach(function (eventName) {
+
+    document.addEventListener(
+      eventName,
+      function (event) {
+        event.preventDefault();
+      },
+      { passive: false }
     );
 
-    window.addEventListener(
-      "appinstalled",
-      function () {
+  });
 
-        deferredInstallPrompt = null;
 
-        document
-          .querySelectorAll(
-            "[data-install-app]"
-          )
-          .forEach(function (button) {
-
-            button.hidden = true;
-
-          });
-
-      }
-    );
-
-  })();
-  </script>
+})();
+</script>
 
 </body>
 </html>

@@ -1,30 +1,70 @@
 {% extends "base.html" %}
+
 {% block title %}Support — TASKORA WORK{% endblock %}
+
 {% block content %}
+
 <div class="page-head">
-  <div>
-    <span class="eyebrow">TASKORA WORK</span>
-    <h1>Support</h1>
-    <p>We are here to help with account, task, wallet and withdrawal issues.</p>
-  </div>
+    <div>
+        <span class="eyebrow">TASKORA WORK</span>
+        <h1>Support</h1>
+        <p>Need help? Find the right information below.</p>
+    </div>
 </div>
 
-<div class="form-card">
-  <h2>Before contacting support</h2>
-  <p>Please include the email or phone number connected to your TASKORA account and a clear description of the problem. Never send your password, Flutterwave secret key, OTP, PIN, or full card details.</p>
+<div class="grid two">
 
-  <h2>Task issue</h2>
-  <p>For a task problem, include the task title and explain what happened. If a submission was rejected, check the review note shown by the platform first.</p>
+    <section class="card">
+        <span class="pill">ACCOUNT</span>
+        <h2>Account & Login</h2>
+        <p>
+            If you are having problems registering, logging in, activating
+            your account, or accessing your dashboard, please check that
+            your account information is correct.
+        </p>
+    </section>
 
-  <h2>Wallet or withdrawal issue</h2>
-  <p>Include the withdrawal amount and the date of the request. Do not share sensitive banking credentials or authentication codes in a support message.</p>
+    <section class="card">
+        <span class="pill">TASKS</span>
+        <h2>Tasks & Submissions</h2>
+        <p>
+            If your task submission is pending, it means it is waiting for
+            review. Approved submissions are credited to your available
+            earnings.
+        </p>
+    </section>
 
-  <h2>Payment issue</h2>
-  <p>For activation/payment problems, provide the relevant transaction reference or non-sensitive payment information so the issue can be investigated.</p>
+    <section class="card">
+        <span class="pill">WALLET</span>
+        <h2>Withdrawals</h2>
+        <p>
+            The minimum withdrawal is ₦5,000. Withdrawal requests open every
+            Friday and your bank account may need to be verified before
+            processing.
+        </p>
+    </section>
 
-  <div class="notice" style="margin-top:18px;">
-    <strong>Official support channel</strong>
-    <p style="margin-bottom:0;">Use the official TASKORA WORK support/contact channel provided by the platform. Do not trust unofficial accounts asking for your password, OTP, PIN, or secret keys.</p>
-  </div>
+    <section class="card">
+        <span class="pill">CONTACT</span>
+        <h2>Need More Help?</h2>
+        <p>
+            If you still need assistance, contact TASKORA WORK through the
+            official support channel provided by the platform.
+        </p>
+    </section>
+
 </div>
+
+<section class="card" style="margin-top:20px;">
+    <h2>Before contacting support</h2>
+
+    <ul>
+        <li>Make sure you are using the correct account.</li>
+        <li>Check your task submission status.</li>
+        <li>Check that your bank details are correct.</li>
+        <li>Keep screenshots or relevant information about the issue.</li>
+        <li>Never send your password to anyone claiming to be support.</li>
+    </ul>
+</section>
+
 {% endblock %}

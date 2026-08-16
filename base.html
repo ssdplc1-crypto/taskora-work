@@ -283,13 +283,19 @@
 <!-- =========================================================
      FOOTER
 ========================================================= -->
-<footer>
+<footer class="site-footer">
 
-  <div>
+  <div class="footer-brand">
     TASKORA WORK · Learn • Work • Earn
   </div>
 
-  <div>
+  <nav class="footer-links" aria-label="Footer navigation">
+    <a href="{{ url_for('terms') }}">Terms & Conditions</a>
+    <a href="{{ url_for('privacy') }}">Privacy Policy</a>
+    <a href="{{ url_for('support') }}">Support</a>
+  </nav>
+
+  <div class="footer-copy">
     © 2026 TASKORA
   </div>
 

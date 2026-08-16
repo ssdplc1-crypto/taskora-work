@@ -1081,6 +1081,55 @@ def profile():
     conn.close()
     return render_template("profile.html", user=u, banks=banks)
 
+@app.route("/change-password", methods=["GET", "POST"])
+@login_required
+def change_password():
+    u = current_user()
+
+    if request.method == "POST":
+        current_password = request.form.get("current_password", "")
+        new_password = request.form.get("new_password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        if not check_password_hash(u["password_hash"], current_password):
+            flash("Current password is incorrect.", "error")
+            return render_template("change_password.html")
+
+        if len(new_password) < 8:
+            flash(
+                "New password must be at least 8 characters.",
+                "error"
+            )
+            return render_template("change_password.html")
+
+        if new_password != confirm_password:
+            flash(
+                "New passwords do not match.",
+                "error"
+            )
+            return render_template("change_password.html")
+
+        if check_password_hash(u["password_hash"], new_password):
+            flash(
+                "New password must be different from your current password.",
+                "error"
+            )
+            return render_template("change_password.html")
+
+        new_hash = generate_password_hash(new_password)
+
+        conn = db()
+        conn.execute(
+            "UPDATE users SET password_hash=? WHERE id=?",
+            (new_hash, u["id"])
+        )
+        conn.commit()
+        conn.close()
+
+        flash("Password changed successfully.", "success")
+        return redirect(url_for("profile"))
+
+    return render_template("change_password.html")
 
 @app.route("/withdraw", methods=["POST"])
 @login_required

@@ -6,47 +6,106 @@
   --line:#e5eceb;
   --soft:#f2f8f7;
   --danger:#b42318;
-  --bg:#fbfdfd
+  --bg:#fbfdfd;
+  --white:#ffffff;
+  --shadow:0 10px 35px rgba(16,32,31,.05);
 }
 
-*{
-  box-sizing:border-box
+*,
+*::before,
+*::after{
+  box-sizing:border-box;
+}
+
+html{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  overflow-x:hidden;
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+  scroll-behavior:smooth;
 }
 
 body{
   margin:0;
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  overflow-x:hidden;
   background:var(--bg);
   color:var(--ink);
-  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  line-height:1.55
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  line-height:1.55;
+  -webkit-tap-highlight-color:transparent;
+  overscroll-behavior-x:none;
+}
+
+img,
+video,
+iframe{
+  max-width:100%;
+  height:auto;
+}
+
+button,
+input,
+textarea,
+select{
+  font:inherit;
+}
+
+input,
+select,
+textarea,
+button{
+  font-size:16px;
 }
 
 a{
   color:inherit;
-  text-decoration:none
+  text-decoration:none;
 }
 
+
+/* =========================================================
+   TOP BAR
+========================================================= */
+
 .topbar{
-  height:72px;
+  min-height:72px;
+  width:100%;
   border-bottom:1px solid var(--line);
   background:#fff;
   display:flex;
   align-items:center;
   justify-content:space-between;
-  padding:0 5%;
+  gap:18px;
+  padding:10px 5%;
   position:sticky;
   top:0;
-  z-index:20
+  z-index:20;
 }
 
 .brand{
+  display:inline-flex;
+  align-items:center;
+  flex:0 0 auto;
+  white-space:nowrap;
   font-size:19px;
   font-weight:800;
-  letter-spacing:-.5px
+  letter-spacing:-.5px;
 }
 
 .brand b{
-  color:var(--brand)
+  color:var(--brand);
 }
 
 .brandmark{
@@ -54,63 +113,48 @@ a{
   place-items:center;
   width:32px;
   height:32px;
+  flex:0 0 32px;
   border-radius:10px;
   background:var(--brand);
   color:#fff;
-  margin-right:7px
+  margin-right:7px;
+  font-weight:900;
 }
 
 .topbar nav{
   display:flex;
-  gap:18px;
   align-items:center;
-  font-size:14px
+  justify-content:flex-end;
+  gap:10px;
+  flex-wrap:wrap;
+  min-width:0;
+  font-size:14px;
 }
+
+.topbar nav a{
+  white-space:nowrap;
+}
+
+.topbar nav .btn{
+  flex:0 0 auto;
+}
+
+
+/* =========================================================
+   MAIN CONTAINER
+========================================================= */
 
 .container{
+  width:100%;
   max-width:1180px;
-  margin:auto;
-  padding:38px 22px 80px
+  margin:0 auto;
+  padding:38px 22px 80px;
 }
 
-.hero{
-  display:grid;
-  grid-template-columns:1.2fr .8fr;
-  gap:42px;
-  align-items:center;
-  padding:70px 0
-}
 
-.hero h1{
-  font-size:clamp(42px,6vw,72px);
-  line-height:1.02;
-  letter-spacing:-3px;
-  margin:12px 0 22px
-}
-
-.hero h1 span{
-  color:var(--brand)
-}
-
-.hero p{
-  font-size:19px;
-  color:var(--muted);
-  max-width:650px
-}
-
-.eyebrow{
-  font-size:11px;
-  font-weight:800;
-  letter-spacing:1.8px;
-  color:var(--brand)
-}
-
-.actions{
-  display:flex;
-  gap:12px;
-  flex-wrap:wrap;
-  margin-top:28px
-}
+/* =========================================================
+   BUTTONS
+========================================================= */
 
 .btn{
   border:0;
@@ -122,149 +166,247 @@ a{
   cursor:pointer;
   display:inline-flex;
   justify-content:center;
-  align-items:center
+  align-items:center;
+  text-align:center;
+  transition:
+    background .18s ease,
+    transform .18s ease,
+    box-shadow .18s ease;
 }
 
 .btn:hover{
-  background:var(--brand2)
+  background:var(--brand2);
+}
+
+.btn:active{
+  transform:translateY(1px);
 }
 
 .btn.ghost{
   background:#fff;
   color:var(--brand);
-  border:1px solid #b8d8d4
+  border:1px solid #b8d8d4;
 }
 
 .btn.small{
   padding:8px 12px;
-  font-size:12px
+  font-size:12px;
 }
 
 .btn.full{
-  width:100%
+  width:100%;
 }
 
 .btn.danger{
   background:#fff0ee;
   color:var(--danger);
-  border:1px solid #ffd0cb
+  border:1px solid #ffd0cb;
 }
 
-.hero-card,
-.card,
-.task-card,
-.form-card,
-.stat{
-  background:#fff;
-  border:1px solid var(--line);
-  border-radius:18px;
-  box-shadow:0 10px 35px rgba(16,32,31,.05)
+
+/* =========================================================
+   HERO
+========================================================= */
+
+.hero{
+  display:grid;
+  grid-template-columns:1.2fr .8fr;
+  gap:42px;
+  align-items:center;
+  padding:70px 0;
 }
 
-.hero-card{
-  padding:30px
+.hero h1{
+  font-size:clamp(42px,6vw,72px);
+  line-height:1.02;
+  letter-spacing:-3px;
+  margin:12px 0 22px;
+}
+
+.hero h1 span{
+  color:var(--brand);
+}
+
+.hero p{
+  font-size:19px;
+  color:var(--muted);
+  max-width:650px;
+}
+
+
+/* =========================================================
+   LABELS
+========================================================= */
+
+.eyebrow{
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:1.8px;
+  color:var(--brand);
 }
 
 .mini-label{
   font-size:11px;
   color:var(--muted);
   font-weight:800;
-  letter-spacing:1px
+  letter-spacing:1px;
 }
+
+.muted{
+  color:var(--muted);
+  font-size:13px;
+}
+
+
+/* =========================================================
+   ACTIONS
+========================================================= */
+
+.actions{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-top:28px;
+}
+
+
+/* =========================================================
+   CARDS
+========================================================= */
+
+.hero-card,
+.card,
+.task-card,
+.form-card,
+.stat{
+  background:var(--white);
+  border:1px solid var(--line);
+  border-radius:18px;
+  box-shadow:var(--shadow);
+}
+
+.hero-card{
+  padding:30px;
+}
+
+.card,
+.task-card{
+  padding:22px;
+}
+
+.form-card{
+  padding:26px;
+}
+
+.form-card.narrow{
+  max-width:620px;
+}
+
+.form-card h2{
+  margin-top:0;
+}
+
+.task-card{
+  min-width:0;
+  transition:
+    transform .18s ease,
+    border-color .18s ease,
+    box-shadow .18s ease;
+}
+
+.task-card:hover{
+  transform:translateY(-2px);
+  border-color:#a8d2ce;
+}
+
+.task-card h3{
+  margin:10px 0 6px;
+}
+
+.task-card p,
+.card p{
+  color:var(--muted);
+}
+
+.link-card{
+  display:block;
+}
+
+
+/* =========================================================
+   HERO FLOW / METRICS
+========================================================= */
 
 .flow{
   font-size:18px;
   font-weight:750;
-  margin:20px 0
+  margin:20px 0;
 }
 
 .flow b{
   color:var(--brand);
-  padding:0 6px
+  padding:0 6px;
 }
 
 .metric{
   display:flex;
   justify-content:space-between;
+  gap:20px;
   padding:15px 0;
-  border-bottom:1px solid var(--line)
+  border-bottom:1px solid var(--line);
 }
 
 .metric:last-child{
-  border-bottom:0
+  border-bottom:0;
 }
 
 .metric span{
-  color:var(--muted)
+  color:var(--muted);
 }
 
-.section{
-  margin:58px 0
-}
 
-.section-head{
-  margin-bottom:22px
-}
-
-.section h2{
-  font-size:32px;
-  line-height:1.1;
-  margin:5px 0
-}
+/* =========================================================
+   GRIDS
+========================================================= */
 
 .grid{
   display:grid;
-  gap:16px
+  gap:16px;
+  min-width:0;
 }
 
 .grid.three{
-  grid-template-columns:repeat(3,1fr)
+  grid-template-columns:repeat(3,minmax(0,1fr));
 }
 
 .grid.two{
-  grid-template-columns:repeat(2,1fr)
+  grid-template-columns:repeat(2,minmax(0,1fr));
 }
 
-.card,
-.task-card{
-  padding:22px
-}
 
-.task-card{
-  transition:.18s
-}
-
-.task-card:hover{
-  transform:translateY(-2px);
-  border-color:#a8d2ce
-}
-
-.link-card{
-  display:block
-}
-
-.task-card h3{
-  margin:10px 0 6px
-}
-
-.task-card p,
-.card p{
-  color:var(--muted)
-}
+/* =========================================================
+   TASK CARDS
+========================================================= */
 
 .task-bottom{
   display:flex;
   justify-content:space-between;
   align-items:center;
+  gap:12px;
   margin-top:18px;
   padding-top:14px;
-  border-top:1px solid var(--line)
+  border-top:1px solid var(--line);
 }
 
 .task-bottom strong{
   font-size:20px;
-  color:var(--brand)
+  color:var(--brand);
 }
+
+
+/* =========================================================
+   PILLS / STATUS
+========================================================= */
 
 .pill,
 .status{
@@ -274,106 +416,144 @@ a{
   background:var(--soft);
   color:var(--brand);
   font-size:11px;
-  font-weight:800
+  font-weight:800;
 }
 
 .status.pending{
   background:#fff7e6;
-  color:#9a6700
+  color:#9a6700;
 }
 
 .status.approved,
 .status.paid{
   background:#e9f8ef;
-  color:#137a3b
+  color:#137a3b;
 }
 
 .status.rejected,
 .status.failed{
   background:#fff0ee;
-  color:var(--danger)
+  color:var(--danger);
 }
+
+
+/* =========================================================
+   PAGE HEAD
+========================================================= */
 
 .page-head{
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap:20px;
-  margin-bottom:28px
+  margin-bottom:28px;
 }
 
 .page-head h1{
   margin:4px 0;
   font-size:38px;
-  letter-spacing:-1px
+  letter-spacing:-1px;
 }
 
 .page-head p{
   margin:0;
-  color:var(--muted)
+  color:var(--muted);
 }
+
+
+/* =========================================================
+   STATS
+========================================================= */
 
 .stats{
   display:grid;
-  grid-template-columns:repeat(3,1fr);
+  grid-template-columns:repeat(3,minmax(0,1fr));
   gap:14px;
-  margin:24px 0
+  margin:24px 0;
+  min-width:0;
 }
 
 .stat{
-  padding:20px
+  padding:20px;
+  min-width:0;
 }
 
 .stat span{
   display:block;
   color:var(--muted);
-  font-size:12px
+  font-size:12px;
 }
 
 .stat strong{
   display:block;
   font-size:27px;
-  margin-top:4px
+  margin-top:4px;
+  overflow-wrap:anywhere;
 }
 
-.form-card{
-  padding:26px
+
+/* =========================================================
+   SECTIONS
+========================================================= */
+
+.section{
+  margin:58px 0;
 }
 
-.form-card.narrow{
-  max-width:620px
+.section-head{
+  margin-bottom:22px;
 }
 
-.form-card h2{
-  margin-top:0
+.section h2{
+  font-size:32px;
+  line-height:1.1;
+  margin:5px 0;
 }
+
+
+/* =========================================================
+   FORMS
+========================================================= */
 
 label{
   display:block;
   font-size:13px;
   font-weight:750;
-  margin:15px 0
+  margin:15px 0;
 }
 
 input,
 textarea,
 select{
   width:100%;
+  max-width:100%;
   margin-top:7px;
   padding:12px 13px;
   border:1px solid #ccd9d7;
   border-radius:10px;
   background:#fff;
-  font:inherit;
-  outline:none
+  outline:none;
+  color:var(--ink);
+  -webkit-appearance:none;
+  appearance:none;
+}
+
+textarea{
+  resize:vertical;
+  min-height:120px;
 }
 
 input:focus,
 textarea:focus,
 select:focus{
   border-color:var(--brand);
-  box-shadow:0 0 0 3px #dff3f0
+  box-shadow:0 0 0 3px #dff3f0;
 }
+
+
+/* =========================================================
+   AUTH
+========================================================= */
 
 .auth{
   display:grid;
@@ -381,24 +561,24 @@ select:focus{
   gap:70px;
   align-items:center;
   max-width:1000px;
-  margin:50px auto
+  margin:50px auto;
 }
 
 .auth.single{
   display:block;
-  max-width:460px
+  max-width:460px;
 }
 
 .auth-copy h1{
   font-size:52px;
   line-height:1.05;
-  letter-spacing:-2px
+  letter-spacing:-2px;
 }
 
-.muted{
-  color:var(--muted);
-  font-size:13px
-}
+
+/* =========================================================
+   ACTIVATION
+========================================================= */
 
 .activation{
   max-width:620px;
@@ -408,19 +588,19 @@ select:focus{
   border:1px solid var(--line);
   border-radius:24px;
   padding:42px;
-  box-shadow:0 12px 40px rgba(16,32,31,.06)
+  box-shadow:0 12px 40px rgba(16,32,31,.06);
 }
 
 .activation h1{
   font-size:42px;
-  line-height:1.05
+  line-height:1.05;
 }
 
 .price{
   font-size:54px;
   font-weight:900;
   color:var(--brand);
-  margin:22px
+  margin:22px;
 }
 
 .checklist{
@@ -429,72 +609,92 @@ select:focus{
   text-align:left;
   display:grid;
   gap:9px;
-  margin:25px 0
+  margin:25px 0;
 }
 
-.checklist li:before{
+.checklist li::before{
   content:"✓";
   color:var(--brand);
   font-weight:900;
-  margin-right:10px
+  margin-right:10px;
 }
+
+
+/* =========================================================
+   ALERTS / NOTICES
+========================================================= */
 
 .notice,
 .alert{
   padding:13px 15px;
   border-radius:12px;
-  margin-bottom:18px
+  margin-bottom:18px;
 }
 
 .notice{
   background:#eef9f7;
-  border:1px solid #cce8e4
+  border:1px solid #cce8e4;
 }
 
 .alert.success{
   background:#eaf8ef;
-  color:#137a3b
+  color:#137a3b;
 }
 
 .alert.error{
   background:#fff0ee;
-  color:var(--danger)
+  color:var(--danger);
 }
+
+
+/* =========================================================
+   DETAIL PAGE
+========================================================= */
 
 .detail{
   display:grid;
-  grid-template-columns:1fr 420px;
-  gap:28px
+  grid-template-columns:minmax(0,1fr) 420px;
+  gap:28px;
 }
 
 .detail-main{
+  min-width:0;
   background:#fff;
   border:1px solid var(--line);
   border-radius:20px;
-  padding:32px
+  padding:32px;
 }
 
 .detail-main h1{
   font-size:46px;
-  line-height:1.05
+  line-height:1.05;
 }
 
 .lead{
   font-size:18px;
-  color:var(--muted)
+  color:var(--muted);
 }
 
+
+/* =========================================================
+   TABLES
+========================================================= */
+
 .table-wrap{
-  overflow:auto;
+  width:100%;
+  max-width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;
   background:#fff;
   border:1px solid var(--line);
-  border-radius:15px
+  border-radius:15px;
 }
 
 table{
   width:100%;
   border-collapse:collapse;
-  min-width:650px
+  min-width:650px;
 }
 
 th,
@@ -503,7 +703,7 @@ td{
   padding:13px 15px;
   border-bottom:1px solid var(--line);
   vertical-align:top;
-  font-size:13px
+  font-size:13px;
 }
 
 th{
@@ -511,23 +711,32 @@ th{
   color:var(--muted);
   font-size:11px;
   text-transform:uppercase;
-  letter-spacing:.6px
+  letter-spacing:.6px;
+}
+
+tr:last-child td{
+  border-bottom:0;
 }
 
 .proof{
   max-width:280px;
-  white-space:pre-wrap
+  white-space:pre-wrap;
 }
 
+
+/* =========================================================
+   LINKS / EMPTY STATES
+========================================================= */
+
 .inline{
-  display:inline
+  display:inline;
 }
 
 .text-link{
   display:inline-block;
   margin-top:15px;
   color:var(--brand);
-  font-weight:700
+  font-weight:700;
 }
 
 .empty{
@@ -536,29 +745,40 @@ th{
   color:var(--muted);
   background:#fff;
   border:1px dashed #cbd9d7;
-  border-radius:16px
+  border-radius:16px;
 }
 
 .empty.large{
-  padding:80px
+  padding:80px;
 }
 
 .empty h1{
   font-size:60px;
-  margin:0
+  margin:0;
 }
 
+
+/* =========================================================
+   FOOTER
+========================================================= */
+
 footer{
+  width:100%;
   border-top:1px solid var(--line);
   padding:25px 5%;
   display:flex;
   justify-content:space-between;
+  gap:20px;
   color:var(--muted);
-  font-size:12px
+  font-size:12px;
 }
 
-  /* MOBILE */
-@media(max-width:850px){
+
+/* =========================================================
+   TABLET / MOBILE
+========================================================= */
+
+@media (max-width:850px){
 
   .hero,
   .detail,
@@ -572,27 +792,44 @@ footer{
 
   .auth{
     gap:25px;
+    margin:30px auto;
   }
 
-  .grid.three,
-  .grid.two,
+  .grid.three{
+    grid-template-columns:1fr;
+  }
+
+  .grid.two{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
   .stats{
     grid-template-columns:1fr;
   }
 
   .topbar{
-    height:auto;
     min-height:64px;
     padding:10px 4%;
     align-items:center;
     flex-wrap:wrap;
-    gap:10px;
+    gap:8px 10px;
+  }
+
+  .brand{
+    font-size:17px;
+  }
+
+  .brandmark{
+    width:30px;
+    height:30px;
+    flex-basis:30px;
+    border-radius:9px;
   }
 
   .topbar nav{
     width:100%;
     display:flex;
-    gap:7px;
+    gap:6px;
     flex-wrap:wrap;
     justify-content:center;
     align-items:center;
@@ -600,7 +837,8 @@ footer{
     padding-top:2px;
   }
 
-  .topbar nav a{
+  .topbar nav a,
+  .topbar nav button{
     display:inline-flex !important;
     align-items:center;
     justify-content:center;
@@ -608,7 +846,6 @@ footer{
   }
 
   .topbar nav a:not(.btn){
-    display:inline-flex !important;
     padding:7px 5px;
   }
 
@@ -626,17 +863,30 @@ footer{
     letter-spacing:-2px;
   }
 
+  .hero p{
+    font-size:17px;
+  }
+
   .page-head{
     align-items:flex-start;
     flex-direction:column;
   }
 
+  .page-head h1{
+    font-size:34px;
+  }
+
   .activation{
     padding:28px 20px;
+    margin:30px auto;
   }
 
   .activation h1{
     font-size:34px;
+  }
+
+  .detail-main{
+    padding:24px;
   }
 
   .detail-main h1{
@@ -647,632 +897,166 @@ footer{
     gap:10px;
     flex-direction:column;
   }
-  }
-/* ================================
-   MOBILE APP POLISH
-   ================================ */
 
-html {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
-  -webkit-text-size-adjust: 100%;
 }
 
-body {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
-}
 
-/* Prevent oversized elements from pushing the page */
-img,
-video,
-iframe,
-table {
-  max-width: 100%;
-}
+/* =========================================================
+   SMALL PHONES
+========================================================= */
 
-/* Better mobile navigation */
-@media (max-width: 850px) {
+@media (max-width:600px){
 
-  .topbar {
-    width: 100%;
-    padding: 10px 12px;
-    gap: 8px;
-    overflow: hidden;
+  .topbar{
+    padding:9px 12px 11px;
   }
 
-  .brand {
-    flex: 0 0 auto;
-    max-width: 48%;
-    overflow: hidden;
+  .brand{
+    font-size:16px;
   }
 
-  .brand-name {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .topbar nav{
+    justify-content:flex-start;
+    gap:4px;
   }
 
-  .topbar nav {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    gap: 6px;
-    padding: 3px 0 5px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+  .topbar nav a:not(.btn){
+    padding:6px 5px;
+    font-size:11px;
   }
 
-  .topbar nav::-webkit-scrollbar {
-    display: none;
+  .topbar nav .btn.small{
+    padding:6px 9px;
+    font-size:10px;
+    border-radius:9px;
   }
 
-  .topbar nav a {
-    flex: 0 0 auto;
-    white-space: nowrap;
+  .container{
+    padding:22px 13px 55px;
   }
 
-  .topbar nav .btn.small {
-    flex: 0 0 auto;
+  .hero{
+    gap:25px;
+    padding:25px 0;
   }
 
-  .container {
-    width: 100%;
-    max-width: 100%;
-    padding: 22px 14px 55px;
-    overflow: hidden;
+  .hero h1{
+    font-size:39px;
+    letter-spacing:-1.7px;
   }
 
-  /* ================================
-     WALLET
-     ================================ */
-
-  .wallet,
-  .wallet-page,
-  .wallet-container {
-    width: 100%;
-    max-width: 100%;
+  .hero p{
+    font-size:16px;
   }
 
-  .stats {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 12px;
-    margin: 18px 0;
+  .actions{
+    flex-direction:column;
   }
 
-  .stat {
-    width: 100%;
-    min-width: 0;
-    padding: 18px;
-    border-radius: 16px;
+  .actions .btn{
+    width:100%;
   }
 
-  .stat span {
-    font-size: 12px;
+  .grid.two{
+    grid-template-columns:1fr;
   }
 
-  .stat strong {
-    font-size: 26px;
+  .stat{
+    padding:18px;
   }
 
-  /* All major wallet sections become full-width cards */
-  .section {
-    width: 100%;
-    max-width: 100%;
-    margin: 30px 0;
+  .stat strong{
+    font-size:25px;
   }
 
-  .form-card,
+  .section{
+    margin:42px 0;
+  }
+
+  .section h2{
+    font-size:28px;
+  }
+
   .card,
-  .table-wrap {
-    width: 100%;
-    max-width: 100%;
+  .task-card,
+  .form-card{
+    padding:18px;
+    border-radius:16px;
   }
 
-  .form-card {
-    padding: 20px 16px;
-    border-radius: 18px;
+  .task-card h3{
+    font-size:18px;
   }
 
-  .form-card h2 {
-    font-size: 22px;
+  .task-bottom{
+    align-items:flex-start;
   }
 
-  /* Inputs */
-  input,
-  textarea,
-  select {
-    width: 100%;
-    max-width: 100%;
-    font-size: 16px;
+  .auth-copy h1{
+    font-size:40px;
   }
 
-  /* Withdrawal button */
-  .btn.full {
-    width: 100%;
-    min-height: 48px;
+  .activation{
+    padding:24px 17px;
   }
 
-  /* Recent withdrawals / earnings */
-  .table-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    border-radius: 15px;
+  .price{
+    font-size:46px;
   }
 
-  table {
-    width: 100%;
-    min-width: 0;
+  .detail-main{
+    padding:20px;
+    border-radius:17px;
   }
 
-  th,
-  td {
-    padding: 12px 10px;
-    font-size: 12px;
+  .detail-main h1{
+    font-size:32px;
   }
 
-  /* Page headings */
-  .page-head {
-    width: 100%;
-    gap: 12px;
-    margin-bottom: 20px;
+  table{
+    min-width:580px;
   }
 
-  .page-head h1 {
-    font-size: 32px;
-    line-height: 1.1;
-  }
-
-  /* Better section headings */
-  .section-head h2 {
-    font-size: 25px;
-  }
-
-  /* Don't allow long text to break layout */
-  h1,
-  h2,
-  h3,
-  p,
-  a,
-  span,
-  strong {
-    overflow-wrap: anywhere;
-  }
-
-  /* Footer */
-  footer {
-    width: 100%;
-    padding: 22px 14px;
-    text-align: center;
-  }
-}
-
-
-/* ================================
-   EXTRA SMALL PHONES
-   ================================ */
-
-@media (max-width: 480px) {
-
-  .topbar {
-    padding: 9px 10px;
-  }
-
-  .brand-name {
-    font-size: 15px;
-  }
-
-  .container {
-    padding-left: 12px;
-    padding-right: 12px;
-  }
-
-  .stat {
-    padding: 17px 16px;
-  }
-
-  .stat strong {
-    font-size: 24px;
-  }
-
-  .form-card {
-    padding: 18px 14px;
-  }
-
-  .section {
-    margin: 26px 0;
-  }
-
-  .section-head h2 {
-    font-size: 23px;
-  }
-
-  th,
-  td {
-    padding: 11px 8px;
-    font-size: 11px;
-  }
-  }
-
-/* =========================================
-   TASKORA WALLET — MOBILE APP UI
-   ========================================= */
-
-.wallet-page {
-  width: 100%;
-  max-width: 920px;
-  margin: 0 auto;
-}
-
-.wallet-header {
-  margin-bottom: 26px;
-}
-
-.wallet-header h1 {
-  margin: 5px 0 7px;
-  font-size: 40px;
-  line-height: 1.08;
-  letter-spacing: -1.4px;
-}
-
-.wallet-header p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 14px;
-}
-
-
-/* BALANCE CARDS */
-
-.wallet-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-  margin-bottom: 22px;
-}
-
-.wallet-stat {
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  padding: 20px;
-  min-width: 0;
-  box-shadow: 0 8px 28px rgba(16,32,31,.045);
-}
-
-.wallet-stat-label {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-
-.wallet-stat-value {
-  font-size: 27px;
-  font-weight: 900;
-  line-height: 1.1;
-  color: var(--ink);
-}
-
-.wallet-stat-note {
-  margin-top: 8px;
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.wallet-stat.available .wallet-stat-value {
-  color: var(--brand);
-}
-
-
-/* GENERAL WALLET CARD */
-
-.wallet-card {
-  width: 100%;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  padding: 24px;
-  margin-bottom: 18px;
-  box-shadow: 0 9px 30px rgba(16,32,31,.045);
-  min-width: 0;
-}
-
-.wallet-card-head {
-  margin-bottom: 20px;
-}
-
-.wallet-card-head h2 {
-  margin: 5px 0 6px;
-  font-size: 25px;
-  line-height: 1.15;
-}
-
-.wallet-card-head p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 13px;
-  max-width: 650px;
-}
-
-
-/* WITHDRAWAL FORM */
-
-.withdraw-form {
-  display: grid;
-  gap: 17px;
-}
-
-.form-field {
-  width: 100%;
-}
-
-.form-field label {
-  margin: 0 0 7px;
-  font-size: 13px;
-}
-
-.form-field input,
-.form-field select {
-  margin-top: 0;
-  min-height: 48px;
-  border-radius: 12px;
-  font-size: 16px;
-}
-
-.input-money {
-  position: relative;
-}
-
-.input-money > span {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--muted);
-  font-weight: 800;
-  z-index: 1;
-}
-
-.input-money input {
-  padding-left: 34px;
-}
-
-.withdraw-button {
-  min-height: 50px;
-  margin-top: 3px;
-  border-radius: 13px;
-  font-size: 14px;
-}
-
-.bank-link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 17px;
-  padding: 13px 15px;
-  border: 1px solid #cce4e1;
-  background: #f3faf9;
-  color: var(--brand);
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 750;
-}
-
-
-/* WITHDRAWAL LIST */
-
-.withdrawal-list,
-.earnings-list {
-  display: grid;
-  gap: 10px;
-}
-
-.withdrawal-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 15px;
-  padding: 15px;
-  border: 1px solid var(--line);
-  border-radius: 13px;
-  background: #fbfdfd;
-}
-
-.withdrawal-main {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-
-.withdrawal-main strong {
-  font-size: 17px;
-}
-
-.withdrawal-main span {
-  color: var(--muted);
-  font-size: 11px;
-}
-
-
-/* EARNINGS */
-
-.earnings-card {
-  margin-bottom: 0;
-}
-
-.earning-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 15px;
-  padding: 15px;
-  border: 1px solid var(--line);
-  border-radius: 13px;
-  background: #fbfdfd;
-}
-
-.earning-info {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-
-.earning-info strong {
-  font-size: 13px;
-  overflow-wrap: anywhere;
-}
-
-.earning-info span {
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.earning-amount {
-  flex: 0 0 auto;
-  color: var(--brand);
-  font-size: 15px;
-  font-weight: 850;
-}
-
-
-/* EMPTY STATE */
-
-.wallet-empty {
-  display: grid;
-  justify-items: center;
-  text-align: center;
-  gap: 5px;
-  padding: 30px 15px;
-  color: var(--muted);
-}
-
-.wallet-empty-icon {
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  margin-bottom: 5px;
-  border-radius: 50%;
-  background: var(--soft);
-  color: var(--brand);
-  font-weight: 900;
-}
-
-.wallet-empty strong {
-  color: var(--ink);
-  font-size: 14px;
-}
-
-.wallet-empty span {
-  font-size: 12px;
-}
-
-
-/* MOBILE */
-
-@media (max-width: 850px) {
-
-  .wallet-page {
-    width: 100%;
-    max-width: 100%;
-  }
-
-  .wallet-header {
-    margin-bottom: 20px;
-  }
-
-  .wallet-header h1 {
-    font-size: 34px;
-    letter-spacing: -1px;
-  }
-
-  .wallet-stats {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .wallet-stat {
-    padding: 17px;
-    border-radius: 16px;
-  }
-
-  .wallet-stat-value {
-    font-size: 25px;
-  }
-
-  .wallet-card {
-    padding: 18px 15px;
-    border-radius: 17px;
-    margin-bottom: 14px;
-  }
-
-  .wallet-card-head {
-    margin-bottom: 17px;
-  }
-
-  .wallet-card-head h2 {
-    font-size: 22px;
-  }
-
-  .withdrawal-item,
-  .earning-item {
-    padding: 13px;
-  }
-
-  .earning-item {
-    align-items: flex-start;
-  }
-
-  .earning-amount {
-    white-space: nowrap;
+  footer{
+    padding:22px 13px;
   }
 
 }
 
 
-/* SMALL PHONES */
+/* =========================================================
+   VERY SMALL PHONES
+========================================================= */
 
-@media (max-width: 480px) {
+@media (max-width:380px){
 
-  .wallet-header h1 {
-    font-size: 31px;
+  .brand{
+    font-size:15px;
   }
 
-  .wallet-header p {
-    font-size: 13px;
+  .brandmark{
+    width:28px;
+    height:28px;
+    flex-basis:28px;
   }
 
-  .wallet-stat-value {
-    font-size: 24px;
+  .topbar nav a:not(.btn){
+    font-size:10px;
+    padding:5px 4px;
   }
 
-  .wallet-card {
-    padding: 17px 13px;
+  .topbar nav .btn.small{
+    font-size:10px;
+    padding:6px 8px;
   }
 
-  .wallet-card-head h2 {
-    font-size: 21px;
+  .hero h1{
+    font-size:35px;
   }
 
-  .withdrawal-item {
-    padding: 12px;
-  }
-
-  .withdrawal-main strong {
-    font-size: 16px;
-  }
-
-  .status {
-    font-size: 10px;
-    padding: 4px 7px;
+  .container{
+    padding-left:11px;
+    padding-right:11px;
   }
 
 }

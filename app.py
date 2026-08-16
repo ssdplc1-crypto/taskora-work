@@ -1035,6 +1035,59 @@ def wallet():
                            ledger=ledger, withdrawals=withdrawals, banks=banks)
 
 
+@app.route("/change-password", methods=["GET", "POST"])
+@login_required
+def change_password():
+    """Allow a logged-in worker to change their password securely."""
+    if request.method == "GET":
+        # The profile page already contains the password form/link.
+        # Redirecting here also keeps the feature compatible with the
+        # existing profile.html without requiring another template file.
+        return redirect(url_for("profile"))
+
+    u = current_user()
+    current_password = request.form.get("current_password", "")
+    new_password = request.form.get("new_password", "")
+    confirm_password = request.form.get("confirm_password", "")
+
+    if not current_password or not new_password or not confirm_password:
+        flash("Please fill in all password fields.", "error")
+        return redirect(url_for("profile"))
+
+    if not check_password_hash(u["password_hash"], current_password):
+        flash("Current password is incorrect.", "error")
+        return redirect(url_for("profile"))
+
+    if len(new_password) < 8:
+        flash("New password must be at least 8 characters.", "error")
+        return redirect(url_for("profile"))
+
+    if new_password != confirm_password:
+        flash("New password and confirmation do not match.", "error")
+        return redirect(url_for("profile"))
+
+    if check_password_hash(u["password_hash"], new_password):
+        flash("Your new password must be different from your current password.", "error")
+        return redirect(url_for("profile"))
+
+    conn = db()
+    try:
+        conn.execute(
+            "UPDATE users SET password_hash=? WHERE id=?",
+            (generate_password_hash(new_password), u["id"]),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        flash("Could not change your password. Please try again.", "error")
+        return redirect(url_for("profile"))
+    finally:
+        conn.close()
+
+    flash("Password changed successfully.", "success")
+    return redirect(url_for("profile"))
+
+
 @app.route("/profile", methods=["GET", "POST"])
 @login_required
 def profile():

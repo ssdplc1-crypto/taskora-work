@@ -1595,6 +1595,24 @@ def health():
         return jsonify({"status": "error", "service": "taskora-work", "database": "unavailable"}), 503
 
 
+# =========================================================
+# PUBLIC INFORMATION PAGES
+# =========================================================
+
+@app.route("/terms")
+def terms():
+    return render_template("terms.html")
+
+
+@app.route("/privacy")
+def privacy():
+    return render_template("privacy.html")
+
+
+@app.route("/support")
+def support():
+    return render_template("support.html")
+
 @app.errorhandler(404)
 def not_found(_):
     return render_template("404.html"), 404

@@ -18,110 +18,241 @@
 
   <style>
     html, body {
-      width: 100%; max-width: 100%; min-width: 0; overflow-x: hidden;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      overflow-x: hidden;
       -webkit-text-size-adjust: 100%;
     }
+
     body { overscroll-behavior-x: none; }
+
     input, textarea, select, button { font-size: 16px; }
 
     /* ---------- Animation-only splash ---------- */
     #taskora-splash {
-      position: fixed; inset: 0; z-index: 99999; display: flex;
-      align-items: center; justify-content: center; overflow: hidden;
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
       background:
         radial-gradient(circle at 50% 42%, rgba(20,184,166,.18), transparent 28%),
         radial-gradient(circle at 85% 85%, rgba(245,158,11,.12), transparent 28%),
         linear-gradient(145deg, #062a2b 0%, #063f3d 48%, #021c20 100%);
-      color: #fff; opacity: 1; visibility: visible;
+      color: #fff;
+      opacity: 1;
+      visibility: visible;
       transition: opacity .5s ease, visibility .5s ease;
     }
-    #taskora-splash::before, #taskora-splash::after {
-      content: ""; position: absolute; width: 70vw; height: 70vw;
-      max-width: 520px; max-height: 520px; border: 1px solid rgba(45,212,191,.16);
-      border-radius: 50%; pointer-events: none; animation: taskoraOrbit 9s linear infinite;
-    }
+
+    #taskora-splash::before,
     #taskora-splash::after {
-      width: 105vw; height: 105vw; max-width: 760px; max-height: 760px;
-      border-color: rgba(245,158,11,.08); animation-direction: reverse; animation-duration: 14s;
+      content: "";
+      position: absolute;
+      width: 70vw;
+      height: 70vw;
+      max-width: 520px;
+      max-height: 520px;
+      border: 1px solid rgba(45,212,191,.16);
+      border-radius: 50%;
+      pointer-events: none;
+      animation: taskoraOrbit 9s linear infinite;
     }
-    #taskora-splash.splash-hide { opacity: 0; visibility: hidden; pointer-events: none; }
+
+    #taskora-splash::after {
+      width: 105vw;
+      height: 105vw;
+      max-width: 760px;
+      max-height: 760px;
+      border-color: rgba(245,158,11,.08);
+      animation-direction: reverse;
+      animation-duration: 14s;
+    }
+
+    #taskora-splash.splash-hide {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
     .splash-particles {
-      position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
       background-image:
         radial-gradient(circle, rgba(45,212,191,.75) 1px, transparent 1.5px),
         radial-gradient(circle, rgba(251,191,36,.7) 1px, transparent 1.5px);
-      background-size: 72px 72px, 105px 105px; background-position: 0 0, 28px 42px;
-      opacity: .28; animation: taskoraParticles 12s linear infinite;
+      background-size: 72px 72px, 105px 105px;
+      background-position: 0 0, 28px 42px;
+      opacity: .28;
+      animation: taskoraParticles 12s linear infinite;
     }
+
     .splash-glow {
-      position: absolute; width: 170px; height: 170px; border-radius: 50%;
-      background: rgba(45,212,191,.14); filter: blur(38px);
+      position: absolute;
+      width: 170px;
+      height: 170px;
+      border-radius: 50%;
+      background: rgba(45,212,191,.14);
+      filter: blur(38px);
       animation: taskoraGlow 3.5s ease-in-out infinite;
     }
+
     .splash-glow.gold {
-      width: 120px; height: 120px; background: rgba(245,158,11,.12);
-      animation-delay: -1.5s; transform: translate(150px, 180px);
+      width: 120px;
+      height: 120px;
+      background: rgba(245,158,11,.12);
+      animation-delay: -1.5s;
+      transform: translate(150px, 180px);
     }
+
     .splash-animation {
-      position: relative; width: 120px; height: 120px; display: grid;
-      place-items: center; animation: taskoraSplashIn .7s cubic-bezier(.2,.8,.2,1) both;
+      position: relative;
+      width: 120px;
+      height: 120px;
+      display: grid;
+      place-items: center;
+      animation: taskoraSplashIn .7s ease-out both;
       z-index: 2;
     }
-    .splash-ring { position: absolute; border-radius: 50%; border: 2px solid transparent; }
+
+    .splash-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid transparent;
+    }
+
     .ring-one {
-      width: 92px; height: 92px; border-top-color: #2dd4bf; border-right-color: #fbbf24;
-      box-shadow: 0 0 20px rgba(45,212,191,.35), 0 0 35px rgba(251,191,36,.12);
+      width: 92px;
+      height: 92px;
+      border-top-color: #2dd4bf;
+      border-right-color: #fbbf24;
+      box-shadow:
+        0 0 20px rgba(45,212,191,.35),
+        0 0 35px rgba(251,191,36,.12);
       animation: taskoraSpin 1.8s linear infinite;
     }
+
     .ring-two {
-      width: 64px; height: 64px; border-bottom-color: #2dd4bf; border-left-color: #fbbf24;
-      box-shadow: 0 0 18px rgba(45,212,191,.25); animation: taskoraSpinReverse 1.3s linear infinite;
+      width: 64px;
+      height: 64px;
+      border-bottom-color: #2dd4bf;
+      border-left-color: #fbbf24;
+      box-shadow: 0 0 18px rgba(45,212,191,.25);
+      animation: taskoraSpinReverse 1.3s linear infinite;
     }
+
     .splash-core {
-      width: 22px; height: 22px; border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
       background: linear-gradient(135deg, #2dd4bf, #fbbf24);
-      box-shadow: 0 0 15px rgba(45,212,191,.8), 0 0 35px rgba(45,212,191,.45), 0 0 55px rgba(251,191,36,.25);
+      box-shadow:
+        0 0 15px rgba(45,212,191,.8),
+        0 0 35px rgba(45,212,191,.45),
+        0 0 55px rgba(251,191,36,.25);
       animation: taskoraCorePulse 1.4s ease-in-out infinite;
     }
+
     @keyframes taskoraSplashIn {
       from { opacity: 0; transform: translateY(22px) scale(.96); }
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
-    @keyframes taskoraSpin { to { transform: rotate(360deg); } }
-    @keyframes taskoraSpinReverse { to { transform: rotate(-360deg); } }
-    @keyframes taskoraOrbit { to { transform: rotate(360deg); } }
-    @keyframes taskoraParticles { to { background-position: 0 72px, 28px 147px; } }
+
+    @keyframes taskoraSpin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes taskoraSpinReverse {
+      to { transform: rotate(-360deg); }
+    }
+
+    @keyframes taskoraOrbit {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes taskoraParticles {
+      to { background-position: 0 72px, 28px 147px; }
+    }
+
     @keyframes taskoraGlow {
       0%, 100% { transform: translate(-130px, -100px) scale(.85); opacity: .45; }
       50% { transform: translate(110px, 90px) scale(1.15); opacity: .8; }
     }
+
     @keyframes taskoraCorePulse {
-      0%, 100% { transform: scale(.75); opacity: .7; }
-      50% { transform: scale(1.25); opacity: 1; }
+      0%, 100% {
+        transform: scale(.75);
+        opacity: .7;
+      }
+      50% {
+        transform: scale(1.25);
+        opacity: 1;
+      }
     }
+
     @media (prefers-reduced-motion: reduce) {
-      #taskora-splash *, #taskora-splash::before, #taskora-splash::after { animation: none !important; }
+      #taskora-splash *,
+      #taskora-splash::before,
+      #taskora-splash::after {
+        animation: none !important;
+      }
     }
 
     /* ---------- Install fallback modal ---------- */
     #taskora-install-help[hidden] { display: none !important; }
+
     #taskora-install-help {
-      position: fixed; inset: 0; z-index: 100000; display: flex;
-      align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,.58);
+      position: fixed;
+      inset: 0;
+      z-index: 100000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0,0,0,.58);
     }
+
     .taskora-install-card {
-      width: min(440px, 100%); background: #fff; color: #10201f;
-      border-radius: 20px; padding: 24px; box-shadow: 0 25px 80px rgba(0,0,0,.28);
+      width: min(440px, 100%);
+      background: #fff;
+      color: #10201f;
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 25px 80px rgba(0,0,0,.28);
     }
-    .taskora-install-card h2 { margin: 0 0 10px; font-size: 22px; }
-    .taskora-install-card p { color: #647371; line-height: 1.6; margin: 8px 0; }
-    .taskora-install-close { width: 100%; margin-top: 14px; }
+
+    .taskora-install-card h2 {
+      margin: 0 0 10px;
+      font-size: 22px;
+    }
+
+    .taskora-install-card p {
+      color: #647371;
+      line-height: 1.6;
+      margin: 8px 0;
+    }
+
+    .taskora-install-close {
+      width: 100%;
+      margin-top: 14px;
+    }
+
     [data-install-app] { white-space: nowrap; }
-    @media (max-width: 850px) { .topbar { overflow: visible; } .topbar nav { overflow: visible; } }
+
+    @media (max-width: 850px) {
+      .topbar { overflow: visible; }
+      .topbar nav { overflow: visible; }
+    }
   </style>
 
   <title>{% block title %}TASKORA WORK{% endblock %}</title>
 </head>
+
 <body>
 
 <div id="taskora-splash" aria-label="Loading">
@@ -142,7 +273,9 @@
       If the install prompt does not appear automatically, open your browser menu
       (⋮) and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.
     </p>
-    <button type="button" class="btn full taskora-install-close" id="taskora-install-close">Close</button>
+    <button type="button" class="btn full taskora-install-close" id="taskora-install-close">
+      Close
+    </button>
   </div>
 </div>
 
@@ -151,6 +284,7 @@
     <span class="brandmark">T</span>
     TASKORA <b>WORK</b>
   </a>
+
   <nav>
     {% if current_user %}
       {% if current_user.role == 'admin' %}
@@ -164,7 +298,11 @@
         <a href="{{ url_for('wallet') }}">Wallet</a>
         <a href="{{ url_for('profile') }}">Profile</a>
       {% endif %}
-      <button type="button" class="btn small" data-install-app>Install App</button>
+
+      <button type="button" class="btn small" data-install-app>
+        Install App
+      </button>
+
       <a class="btn small" href="{{ url_for('logout') }}">Logout</a>
     {% else %}
       <a href="{{ url_for('login') }}">Login</a>
@@ -179,16 +317,19 @@
       <div class="alert {{ category }}">{{ message }}</div>
     {% endfor %}
   {% endwith %}
+
   {% block content %}{% endblock %}
 </main>
 
 <footer>
   <div>TASKORA WORK · Learn • Work • Earn</div>
+
   <div class="footer-links">
     <a href="{{ url_for('terms') }}">Terms &amp; Conditions</a>
     <a href="{{ url_for('privacy') }}">Privacy Policy</a>
     <a href="{{ url_for('support') }}">Support</a>
   </div>
+
   <div>© 2026 TASKORA</div>
 </footer>
 
@@ -196,7 +337,9 @@
 (function () {
   "use strict";
 
-  /* ========================= SERVICE WORKER ========================= */
+  /* =========================
+     SERVICE WORKER
+  ========================= */
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       navigator.serviceWorker.register("/static/sw.js", { scope: "/" })
@@ -210,27 +353,45 @@
     });
   }
 
-  /* ========================= INSTALL APP ========================= */
+  /* =========================
+     INSTALL APP
+  ========================= */
   let deferredInstallPrompt = null;
+
   const installButtons = document.querySelectorAll("[data-install-app]");
   const help = document.getElementById("taskora-install-help");
   const helpText = document.getElementById("taskora-install-text");
   const closeHelp = document.getElementById("taskora-install-close");
 
   function isStandalone() {
-    return ((window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true);
+    return (
+      (window.matchMedia &&
+        window.matchMedia("(display-mode: standalone)").matches) ||
+      window.navigator.standalone === true
+    );
   }
+
   function showInstallHelp(message) {
     if (!help) return;
     if (message) helpText.innerHTML = message;
     help.hidden = false;
   }
-  function hideInstallHelp() { if (help) help.hidden = true; }
+
+  function hideInstallHelp() {
+    if (help) help.hidden = true;
+  }
+
   if (closeHelp) closeHelp.addEventListener("click", hideInstallHelp);
-  if (help) help.addEventListener("click", function (event) { if (event.target === help) hideInstallHelp(); });
+
+  if (help) {
+    help.addEventListener("click", function (event) {
+      if (event.target === help) hideInstallHelp();
+    });
+  }
 
   window.addEventListener("beforeinstallprompt", function (event) {
-    event.preventDefault(); deferredInstallPrompt = event;
+    event.preventDefault();
+    deferredInstallPrompt = event;
     console.log("TASKORA install prompt is ready.");
   });
 
@@ -240,33 +401,53 @@
         showInstallHelp("TASKORA WORK is already installed on this device.");
         return;
       }
+
       if (deferredInstallPrompt) {
         try {
           deferredInstallPrompt.prompt();
           const result = await deferredInstallPrompt.userChoice;
           console.log("TASKORA install result:", result.outcome);
           deferredInstallPrompt = null;
-          if (result.outcome === "accepted") { button.hidden = true; return; }
-        } catch (error) { console.error("TASKORA install error:", error); }
+
+          if (result.outcome === "accepted") {
+            button.hidden = true;
+            return;
+          }
+        } catch (error) {
+          console.error("TASKORA install error:", error);
+        }
       }
+
       const ua = navigator.userAgent || "";
       const isIOS = /iPad|iPhone|iPod/i.test(ua);
+
       if (isIOS) {
-        showInstallHelp("On iPhone/iPad, tap <strong>Share</strong> in Safari, then choose <strong>Add to Home Screen</strong>.");
+        showInstallHelp(
+          "On iPhone/iPad, tap <strong>Share</strong> in Safari, then choose <strong>Add to Home Screen</strong>."
+        );
       } else {
-        showInstallHelp("Chrome did not provide the automatic install prompt yet. Tap the browser <strong>⋮</strong> menu and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>. If you do not see it, reload TASKORA once after the page finishes loading.");
+        showInstallHelp(
+          "Chrome did not provide the automatic install prompt yet. Tap the browser <strong>⋮</strong> menu and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>. If you do not see it, reload TASKORA once after the page finishes loading."
+        );
       }
     });
   });
 
   window.addEventListener("appinstalled", function () {
     deferredInstallPrompt = null;
-    installButtons.forEach(function (button) { button.hidden = true; });
+    installButtons.forEach(function (button) {
+      button.hidden = true;
+    });
   });
 
-  /* ========================= SPLASH =========================
-     Animation only. No logo or splash text. */
+  /* =========================
+     SPLASH
+     Show ONLY once per browser/app session.
+     Navigating between TASKORA pages will NOT show it again.
+  ========================= */
   const splash = document.getElementById("taskora-splash");
+  const splashSeenKey = "taskora_splash_seen_v2";
+
   function hideSplash() {
     if (!splash) return;
     splash.classList.add("splash-hide");
@@ -274,13 +455,34 @@
       if (splash && splash.parentNode) splash.remove();
     }, 400);
   }
+
   if (splash) {
-    window.addEventListener("load", function () { setTimeout(hideSplash, 1650); });
-    setTimeout(hideSplash, 2600);
+    let alreadySeen = false;
+
+    try {
+      alreadySeen = sessionStorage.getItem(splashSeenKey) === "1";
+    } catch (error) {
+      console.warn("TASKORA splash storage unavailable:", error);
+    }
+
+    if (alreadySeen) {
+      hideSplash();
+    } else {
+      try {
+        sessionStorage.setItem(splashSeenKey, "1");
+      } catch (error) {
+        console.warn("TASKORA splash storage unavailable:", error);
+      }
+
+      window.addEventListener("load", function () {
+        setTimeout(hideSplash, 1650);
+      });
+
+      setTimeout(hideSplash, 2600);
+    }
   }
 })();
 </script>
 
 </body>
-  </html>
-  
+</html>

@@ -1156,3 +1156,137 @@ footer{
   }
 
 }
+
+/* =========================================================
+   WALLET / WITHDRAWAL MOBILE FIX
+========================================================= */
+
+@media (max-width:700px){
+
+  .card{
+    width:100%;
+    max-width:100%;
+    overflow:hidden;
+  }
+
+  .card h1,
+  .card h2,
+  .card h3{
+    line-height:1.15;
+    letter-spacing:-.6px;
+  }
+
+  .card h2{
+    font-size:27px;
+    margin-top:0;
+    margin-bottom:18px;
+  }
+
+  .card p{
+    font-size:14px;
+    line-height:1.5;
+    overflow-wrap:anywhere;
+  }
+
+  .card label{
+    font-size:12px;
+    margin:13px 0;
+  }
+
+  .card input,
+  .card select,
+  .card textarea{
+    width:100%;
+    max-width:100%;
+    font-size:14px;
+    padding:11px 12px;
+  }
+
+  .card .btn{
+    width:100%;
+    font-size:14px;
+    padding:11px 14px;
+  }
+
+  .card .text-link{
+    font-size:13px;
+    margin-top:13px;
+  }
+
+  .section h2{
+    font-size:27px;
+  }
+
+  .section .eyebrow{
+    font-size:10px;
+  }
+
+  .table-wrap{
+    width:100%;
+    max-width:100%;
+    overflow-x:auto;
+  }
+
+  table{
+    min-width:100%;
+    width:100%;
+  }
+
+  th,
+  td{
+    font-size:11px;
+    padding:11px 12px;
+  }
+
+  th{
+    font-size:9px;
+  }
+
+}
+
+
+/* =========================================================
+   EXTRA SMALL PHONES
+========================================================= */
+
+@media (max-width:450px){
+
+  .card h1,
+  .card h2,
+  .card h3{
+    font-size:25px;
+  }
+
+  .section h2{
+    font-size:25px;
+  }
+
+  .card p{
+    font-size:13px;
+  }
+
+  .card label{
+    font-size:11px;
+  }
+
+  .card input,
+  .card select,
+  .card textarea{
+    font-size:14px;
+  }
+
+  .card .btn{
+    font-size:13px;
+  }
+
+  th,
+  td{
+    font-size:10px;
+    padding:10px;
+  }
+
+  th{
+    font-size:9px;
+  }
+
+}

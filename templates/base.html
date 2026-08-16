@@ -402,13 +402,95 @@
       .topbar { overflow: visible; }
       .topbar nav { overflow: visible; }
     }
+  
+    /* =========================================================
+       ADMIN MOBILE TABLE FIX
+       Keeps the ACTION column visible on small phones.
+    ========================================================= */
+
+    .admin-page .table-wrap {
+      position: relative;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+    }
+
+    .admin-page table {
+      width: 100%;
+    }
+
+    .admin-page th:last-child,
+    .admin-page td:last-child {
+      position: sticky;
+      right: 0;
+      z-index: 5;
+      background: #fff;
+      box-shadow: -8px 0 14px rgba(16,32,31,.07);
+    }
+
+    .admin-page th:last-child {
+      background: #f8fbfa;
+    }
+
+    .admin-page td:last-child {
+      min-width: 112px;
+      white-space: normal;
+    }
+
+    .admin-page td:last-child form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      margin: 0;
+    }
+
+    .admin-page td:last-child .btn,
+    .admin-page td:last-child button {
+      margin: 0;
+      min-height: 36px;
+      padding: 8px 10px;
+      font-size: 12px;
+      border-radius: 9px;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 700px) {
+      .admin-page .container {
+        padding-left: 12px;
+        padding-right: 12px;
+      }
+
+      .admin-page .table-wrap {
+        border-radius: 14px;
+      }
+
+      .admin-page th,
+      .admin-page td {
+        padding: 10px 11px;
+        font-size: 12px;
+      }
+
+      .admin-page th:last-child,
+      .admin-page td:last-child {
+        min-width: 105px;
+      }
+
+      .admin-page td:last-child .btn,
+      .admin-page td:last-child button {
+        font-size: 11px;
+        padding: 7px 9px;
+      }
+    }
+
   </style>
 
   <title>{% block title %}TASKORA WORK{% endblock %}</title>
 </head>
 
-<body>
+<body class="{% if request.path.startswith('/admin') %}admin-page{% endif %}">
 
+{% if not request.path.startswith('/admin/submissions') and not request.path.startswith('/admin/withdrawals') %}
 <div id="taskora-splash" aria-label="TASKORA WORK loading">
   <div class="splash-particles"></div>
   <div class="splash-glow"></div>
@@ -434,6 +516,8 @@
     <div class="splash-loading">LOADING...</div>
   </div>
 </div>
+
+{% endif %}
 
 <div id="taskora-install-help" hidden>
   <div class="taskora-install-card" role="dialog" aria-modal="true">
@@ -611,10 +695,19 @@
 
   /* =========================
      TASKORA STARTUP SPLASH
-     Show once per browser session.
-     It will not appear on every page navigation.
+     Skip admin review pages so they open immediately.
   ========================= */
   (function () {
+    var isAdminReviewPage =
+      window.location.pathname.indexOf("/admin/submissions") === 0 ||
+      window.location.pathname.indexOf("/admin/withdrawals") === 0;
+
+    if (isAdminReviewPage) {
+      var adminSplash = document.getElementById("taskora-splash");
+      if (adminSplash) adminSplash.remove();
+      return;
+    }
+
     var splash = document.getElementById("taskora-splash");
     if (!splash) return;
 
@@ -647,12 +740,10 @@
       setTimeout(hideSplash, 1800);
     });
 
-    // Safety fallback in case the load event is delayed.
     setTimeout(hideSplash, 2800);
   })();
 })();
 </script>
 
 </body>
-  </html>
-  
+</html>

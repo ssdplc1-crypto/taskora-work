@@ -31,7 +31,7 @@ app.config["SESSION_COOKIE_SECURE"] = os.environ.get("COOKIE_SECURE", "0") == "1
 
 FLW_SECRET_KEY = os.environ.get("FLW_SECRET_KEY", "")
 FLW_WEBHOOK_HASH = os.environ.get("FLW_WEBHOOK_HASH", "")
-BASE_URL = os.environ.get("BASE_URL", "").strip().rstrip("/")
+BASE_URL = os.environ.get("BASE_URL", "http://localhost:5000").rstrip("/")
 ACTIVATION_FEE = 3000
 MIN_WITHDRAWAL = 5000
 CURRENCY = "NGN"
@@ -481,25 +481,14 @@ def activate_pay():
         return redirect(url_for("activate"))
 
     tx_ref = f"TASKORA-ACT-{u['id']}-{uuid.uuid4().hex[:16]}"
-    # Prefer the configured public URL, but fall back to the actual request host.
-    # This prevents Flutterwave from receiving a localhost callback on Render.
-    public_base_url = BASE_URL or request.url_root.rstrip("/")
-    redirect_url = f"{public_base_url}{url_for('activation_callback')}"
+    redirect_url = f"{BASE_URL}/activate/callback"
 
     payload = {
         "tx_ref": tx_ref,
         "amount": ACTIVATION_FEE,
         "currency": CURRENCY,
         "redirect_url": redirect_url,
-        "payment_options": "card, banktransfer, ussd",
-        "configuration": {
-            "session_duration": 30,
-            "max_retry_attempt": 5,
-        },
-        "meta": {
-            "taskora_user_id": str(u["id"]),
-            "purpose": "account_activation",
-        },
+        "payment_options": "card,banktransfer,ussd",
         "customer": {
             "email": u["email"],
             "name": u["full_name"],
@@ -548,8 +537,7 @@ def activate_pay():
     finally:
         conn.close()
 
-    # 303 explicitly tells the browser to perform a GET on the hosted checkout.
-    return redirect(checkout_link, code=303)
+    return redirect(checkout_link)
 
 
 def _activation_started_for_user(user_id):
@@ -1488,6 +1476,63 @@ def admin_refresh_withdrawal(withdrawal_id):
     except Exception as e:
         flash(str(e), "error")
     return redirect(url_for("admin_withdrawals"))
+
+# ===============================
+# PUBLIC LEGAL / SUPPORT PAGES
+# These endpoints are required by templates/base.html.
+# ===============================
+
+@app.route("/terms")
+def terms():
+    return """
+    <!doctype html>
+    <html lang="en">
+    <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>TASKORA WORK — Terms & Conditions</title>
+    <style>body{font-family:system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.7}a{color:inherit}</style>
+    </head><body>
+    <h1>TASKORA WORK — Terms &amp; Conditions</h1>
+    <p>By using TASKORA WORK, you agree to use the platform lawfully and to provide accurate account information.</p>
+    <p>Tasks must be completed honestly and according to the instructions provided. Fraudulent activity, duplicate submissions, or attempts to abuse the platform may result in account restrictions.</p>
+    <p>Activation, task rewards, withdrawals, and other platform rules are subject to the current rules displayed inside TASKORA WORK.</p>
+    <p><a href="/">← Back to TASKORA WORK</a></p>
+    </body></html>
+    """
+
+
+@app.route("/privacy")
+def privacy():
+    return """
+    <!doctype html>
+    <html lang="en">
+    <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>TASKORA WORK — Privacy Policy</title>
+    <style>body{font-family:system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.7}a{color:inherit}</style>
+    </head><body>
+    <h1>TASKORA WORK — Privacy Policy</h1>
+    <p>TASKORA WORK uses the information you provide to create and operate your account, process tasks, manage balances, and process withdrawals.</p>
+    <p>We do not ask users to submit information that is not needed for the operation of the service. Payment-related information is handled for payment verification and account operations.</p>
+    <p><a href="/">← Back to TASKORA WORK</a></p>
+    </body></html>
+    """
+
+
+@app.route("/support")
+def support():
+    return """
+    <!doctype html>
+    <html lang="en">
+    <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>TASKORA WORK — Support</title>
+    <style>body{font-family:system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.7}a{color:inherit}</style>
+    </head><body>
+    <h1>TASKORA WORK — Support</h1>
+    <p>If you need help with your account, activation, tasks, wallet, or withdrawal, use the support contact provided by TASKORA WORK.</p>
+    <p>Please include your registered email and a clear description of the issue when contacting support.</p>
+    <p><a href="/">← Back to TASKORA WORK</a></p>
+    </body></html>
+    """
+
 
 @app.route("/health")
 def health():

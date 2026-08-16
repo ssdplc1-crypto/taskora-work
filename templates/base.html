@@ -441,48 +441,19 @@
   });
 
   /* =========================
-     SPLASH
-     Show ONLY once per browser/app session.
-     Navigating between TASKORA pages will NOT show it again.
+     SPLASH SAFETY CLEANUP
+     Early script handles first display; this is final fallback.
   ========================= */
-  const splash = document.getElementById("taskora-splash");
-  const splashSeenKey = "taskora_splash_seen_v2";
-
-  function hideSplash() {
-    if (!splash) return;
-    splash.classList.add("splash-hide");
-    setTimeout(function () {
-      if (splash && splash.parentNode) splash.remove();
-    }, 400);
-  }
-
-  if (splash) {
-    let alreadySeen = false;
-
-    try {
-      alreadySeen = sessionStorage.getItem(splashSeenKey) === "1";
-    } catch (error) {
-      console.warn("TASKORA splash storage unavailable:", error);
+  setTimeout(function(){
+    var splash=document.getElementById("taskora-splash");
+    if(splash){
+      splash.classList.add("splash-hide");
+      setTimeout(function(){ if(splash && splash.parentNode) splash.remove(); },500);
     }
-
-    if (alreadySeen) {
-      hideSplash();
-    } else {
-      try {
-        sessionStorage.setItem(splashSeenKey, "1");
-      } catch (error) {
-        console.warn("TASKORA splash storage unavailable:", error);
-      }
-
-      window.addEventListener("load", function () {
-        setTimeout(hideSplash, 1650);
-      });
-
-      setTimeout(hideSplash, 2600);
-    }
-  }
+  },2200);
 })();
 </script>
 
 </body>
-</html>
+              </html>
+              

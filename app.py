@@ -386,6 +386,26 @@ def index():
     return render_template("index.html", tasks=tasks)
 
 
+# =========================================================
+# PUBLIC LEGAL / SUPPORT PAGES
+# Keep exactly one endpoint for each of these routes.
+# =========================================================
+
+@app.route("/terms")
+def terms():
+    return render_template("terms.html")
+
+
+@app.route("/privacy")
+def privacy():
+    return render_template("privacy.html")
+
+
+@app.route("/support")
+def support():
+    return render_template("support.html")
+
+
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":

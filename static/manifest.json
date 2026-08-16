@@ -1,25 +1,25 @@
 {
   "name": "TASKORA WORK",
   "short_name": "TASKORA",
-  "description": "Learn, Work, Earn.",
+  "description": "TASKORA WORK - Learn, Work, Earn.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#ffffff",
   "theme_color": "#0f766e",
-  "orientation": "portrait",
   "icons": [
     {
-      "src": "/static/icons/icon-192.png",
+      "src": "/static/favicon.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/static/icons/icon-512.png",
-      "sizes": "512x512",
+      "src": "/static/apple-touch-icon.png",
+      "sizes": "180x180",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }

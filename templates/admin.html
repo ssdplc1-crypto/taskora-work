@@ -1,62 +1,107 @@
 {% extends "base.html" %}
-{% block title %}Admin — TASKORA WORK{% endblock %}
+
+{% block title %}Admin Dashboard — TASKORA WORK{% endblock %}
+
 {% block content %}
-
-<div class="page-head">
-    <div>
-        <span class="eyebrow">ADMIN CONTROL CENTER</span>
-        <h1>TASKORA overview</h1>
-    </div>
-
-    <div>
-        <a class="btn" href="{{ url_for('admin_new_task') }}">+ Create Task</a>
-        <a class="btn" href="{{ url_for('admin_change_password') }}">Change Admin Password</a>
-    </div>
-</div>
-
-<div class="stats">
-    <div class="stat"><span>Workers</span><strong>{{ stats.users }}</strong></div>
-    <div class="stat"><span>Activated</span><strong>{{ stats.activated }}</strong></div>
-    <div class="stat"><span>Tasks</span><strong>{{ stats.tasks }}</strong></div>
-    <div class="stat"><span>Pending submissions</span><strong>{{ stats.submissions }}</strong></div>
-    <div class="stat"><span>Pending withdrawals</span><strong>{{ stats.withdrawals }}</strong></div>
-    <div class="stat"><span>Activation records</span><strong>₦{{ "{:,}".format(stats.activation_revenue or 0) }}</strong></div>
-</div>
-
-<div class="actions">
-    <a class="btn ghost" href="{{ url_for('admin_submissions') }}">Review submissions</a>
-    <a class="btn ghost" href="{{ url_for('admin_withdrawals') }}">Manage withdrawals</a>
-</div>
-
-<section class="section">
-    <div class="section-head">
-        <span class="eyebrow">RECENT WITHDRAWALS</span>
-        <h2>Latest requests</h2>
-    </div>
-
-    <div class="table-wrap">
-        <table>
-            <tr>
-                <th>User</th>
-                <th>Amount</th>
-                <th>Bank</th>
-                <th>Status</th>
-            </tr>
-
-            {% for w in withdrawals %}
-            <tr>
-                <td>{{ w.full_name }}</td>
-                <td>₦{{ "{:,}".format(w.amount) }}</td>
-                <td>{{ w.bank_name }} · ****{{ w.account_number[-4:] }}</td>
-                <td>{{ w.status }}</td>
-            </tr>
-            {% else %}
-            <tr>
-                <td colspan="4">No requests.</td>
-            </tr>
-            {% endfor %}
-        </table>
-    </div>
+<section class="page-head">
+  <div>
+    <div class="eyebrow">ADMIN PANEL</div>
+    <h1>Admin Dashboard</h1>
+    <p>Manage workers, tasks, submissions and withdrawals.</p>
+  </div>
+  <a class="btn" href="{{ url_for('admin_new_task') }}">+ New Task</a>
 </section>
 
+<div class="stats">
+  <div class="stat">
+    <span>Workers</span>
+    <strong>{{ stats.users|default(0) }}</strong>
+  </div>
+  <div class="stat">
+    <span>Activated</span>
+    <strong>{{ stats.activated|default(0) }}</strong>
+  </div>
+  <div class="stat">
+    <span>Tasks</span>
+    <strong>{{ stats.tasks|default(0) }}</strong>
+  </div>
+  <div class="stat">
+    <span>Pending submissions</span>
+    <strong>{{ stats.submissions|default(0) }}</strong>
+  </div>
+  <div class="stat">
+    <span>Pending withdrawals</span>
+    <strong>{{ stats.withdrawals|default(0) }}</strong>
+  </div>
+  <div class="stat">
+    <span>Paid withdrawals</span>
+    <strong>{{ stats.paid_withdrawals|default(0) }}</strong>
+  </div>
+</div>
+
+<div class="grid two">
+  <div class="card">
+    <h2>Admin actions</h2>
+    <p>Open the management pages below.</p>
+    <div class="actions">
+      <a class="btn" href="{{ url_for('admin_new_task') }}">Create Task</a>
+      <a class="btn ghost" href="{{ url_for('admin_submissions') }}">Review Submissions</a>
+      <a class="btn ghost" href="{{ url_for('admin_withdrawals') }}">Manage Withdrawals</a>
+      <a class="btn ghost" href="{{ url_for('admin_users') }}">Manage Workers</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Financial overview</h2>
+    <div class="metric">
+      <span>Activation revenue</span>
+      <strong>₦{{ "{:,}".format(stats.activation_revenue|default(0)|int) }}</strong>
+    </div>
+    <div class="metric">
+      <span>Available task earnings</span>
+      <strong>₦{{ "{:,}".format(stats.total_earnings|default(0)|int) }}</strong>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:18px;">
+  <div class="section-head">
+    <div>
+      <div class="eyebrow">RECENT</div>
+      <h2>Recent withdrawals</h2>
+    </div>
+    <a class="btn small" href="{{ url_for('admin_withdrawals') }}">View all</a>
+  </div>
+
+  {% if withdrawals %}
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Worker</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Bank</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for w in withdrawals %}
+          <tr>
+            <td>{{ w.full_name }}</td>
+            <td>₦{{ "{:,}".format((w.amount|default(0))|int) }}</td>
+            <td>
+              <span class="status {{ w.status|default('pending') }}">
+                {{ w.status|default('pending') }}
+              </span>
+            </td>
+            <td>{{ w.bank_name|default('—') }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="muted">No withdrawals yet.</p>
+  {% endif %}
+</div>
 {% endblock %}

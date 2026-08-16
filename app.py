@@ -31,7 +31,7 @@ app.config["SESSION_COOKIE_SECURE"] = os.environ.get("COOKIE_SECURE", "0") == "1
 
 FLW_SECRET_KEY = os.environ.get("FLW_SECRET_KEY", "")
 FLW_WEBHOOK_HASH = os.environ.get("FLW_WEBHOOK_HASH", "")
-BASE_URL = os.environ.get("BASE_URL", "http://localhost:5000").rstrip("/")
+BASE_URL = os.environ.get("BASE_URL", "").strip().rstrip("/")
 ACTIVATION_FEE = 3000
 MIN_WITHDRAWAL = 5000
 CURRENCY = "NGN"
@@ -386,26 +386,6 @@ def index():
     return render_template("index.html", tasks=tasks)
 
 
-# =========================================================
-# PUBLIC LEGAL / SUPPORT PAGES
-# Keep exactly one endpoint for each of these routes.
-# =========================================================
-
-@app.route("/terms")
-def terms():
-    return render_template("terms.html")
-
-
-@app.route("/privacy")
-def privacy():
-    return render_template("privacy.html")
-
-
-@app.route("/support")
-def support():
-    return render_template("support.html")
-
-
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -501,14 +481,25 @@ def activate_pay():
         return redirect(url_for("activate"))
 
     tx_ref = f"TASKORA-ACT-{u['id']}-{uuid.uuid4().hex[:16]}"
-    redirect_url = f"{BASE_URL}/activate/callback"
+    # Prefer the configured public URL, but fall back to the actual request host.
+    # This prevents Flutterwave from receiving a localhost callback on Render.
+    public_base_url = BASE_URL or request.url_root.rstrip("/")
+    redirect_url = f"{public_base_url}{url_for('activation_callback')}"
 
     payload = {
         "tx_ref": tx_ref,
         "amount": ACTIVATION_FEE,
         "currency": CURRENCY,
         "redirect_url": redirect_url,
-        "payment_options": "card,banktransfer,ussd",
+        "payment_options": "card, banktransfer, ussd",
+        "configuration": {
+            "session_duration": 30,
+            "max_retry_attempt": 5,
+        },
+        "meta": {
+            "taskora_user_id": str(u["id"]),
+            "purpose": "account_activation",
+        },
         "customer": {
             "email": u["email"],
             "name": u["full_name"],
@@ -557,7 +548,8 @@ def activate_pay():
     finally:
         conn.close()
 
-    return redirect(checkout_link)
+    # 303 explicitly tells the browser to perform a GET on the hosted checkout.
+    return redirect(checkout_link, code=303)
 
 
 def _activation_started_for_user(user_id):
@@ -1081,55 +1073,6 @@ def profile():
     conn.close()
     return render_template("profile.html", user=u, banks=banks)
 
-@app.route("/change-password", methods=["GET", "POST"])
-@login_required
-def change_password():
-    u = current_user()
-
-    if request.method == "POST":
-        current_password = request.form.get("current_password", "")
-        new_password = request.form.get("new_password", "")
-        confirm_password = request.form.get("confirm_password", "")
-
-        if not check_password_hash(u["password_hash"], current_password):
-            flash("Current password is incorrect.", "error")
-            return render_template("change_password.html")
-
-        if len(new_password) < 8:
-            flash(
-                "New password must be at least 8 characters.",
-                "error"
-            )
-            return render_template("change_password.html")
-
-        if new_password != confirm_password:
-            flash(
-                "New passwords do not match.",
-                "error"
-            )
-            return render_template("change_password.html")
-
-        if check_password_hash(u["password_hash"], new_password):
-            flash(
-                "New password must be different from your current password.",
-                "error"
-            )
-            return render_template("change_password.html")
-
-        new_hash = generate_password_hash(new_password)
-
-        conn = db()
-        conn.execute(
-            "UPDATE users SET password_hash=? WHERE id=?",
-            (new_hash, u["id"])
-        )
-        conn.commit()
-        conn.close()
-
-        flash("Password changed successfully.", "success")
-        return redirect(url_for("profile"))
-
-    return render_template("change_password.html")
 
 @app.route("/withdraw", methods=["POST"])
 @login_required

@@ -488,7 +488,7 @@ def activate_pay():
         "amount": ACTIVATION_FEE,
         "currency": CURRENCY,
         "redirect_url": redirect_url,
-        "payment_options": "card",
+        "payment_options": "card,banktransfer,ussd",
         "customer": {
             "email": u["email"],
             "name": u["full_name"],

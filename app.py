@@ -350,7 +350,11 @@ def flw_post(path, payload):
     except Exception:
         data = {"status": "error", "message": r.text}
     if r.status_code >= 400 or data.get("status") == "error":
-        raise RuntimeError(data.get("message", "Flutterwave request failed."))
+        message = data.get("message") or data.get("error") or "Flutterwave request failed."
+        details = data.get("data")
+        if details:
+            message = f"{message} ({details})"
+        raise RuntimeError(str(message))
     return data
 
 
@@ -483,22 +487,38 @@ def activate_pay():
     tx_ref = f"TASKORA-ACT-{u['id']}-{uuid.uuid4().hex[:16]}"
     redirect_url = f"{BASE_URL}/activate/callback"
 
+    # Flutterwave Standard: show ONLY Card and Bank Transfer at checkout.
+    # USSD and other payment methods are intentionally excluded.
+    phone = re.sub(r"\D", "", str(u["phone"] or ""))
     payload = {
         "tx_ref": tx_ref,
         "amount": ACTIVATION_FEE,
         "currency": CURRENCY,
         "redirect_url": redirect_url,
-        "payment_options": "card,banktransfer,ussd",
+        "payment_options": "card, banktransfer",
         "customer": {
-            "email": u["email"],
-            "name": u["full_name"],
-            "phonenumber": u["phone"],
+            "email": str(u["email"] or "").strip().lower(),
+            "name": str(u["full_name"] or "").strip(),
+            "phonenumber": phone,
         },
         "customizations": {
             "title": "TASKORA WORK Activation",
-            "description": "TASKORA WORK account activation",
+            "description": "Activate your TASKORA WORK account",
+        },
+        "meta": {
+            "user_id": str(u["id"]),
+            "purpose": "account_activation",
         },
     }
+
+    # These are required by Flutterwave Standard. Fail early with a clear
+    # message instead of sending an incomplete checkout request.
+    if not payload["customer"]["email"]:
+        flash("Your account email is missing. Please update your profile first.", "error")
+        return redirect(url_for("activate"))
+    if not payload["customer"]["name"]:
+        flash("Your account name is missing. Please update your profile first.", "error")
+        return redirect(url_for("activate"))
 
     try:
         result = flw_post("/payments", payload)
@@ -1033,59 +1053,6 @@ def wallet():
     conn.close()
     return render_template("wallet.html", balance=available_balance(u["id"]), pending=pending_balance(u["id"]),
                            ledger=ledger, withdrawals=withdrawals, banks=banks)
-
-
-@app.route("/change-password", methods=["GET", "POST"])
-@login_required
-def change_password():
-    """Allow a logged-in worker to change their password securely."""
-    if request.method == "GET":
-        # The profile page already contains the password form/link.
-        # Redirecting here also keeps the feature compatible with the
-        # existing profile.html without requiring another template file.
-        return redirect(url_for("profile"))
-
-    u = current_user()
-    current_password = request.form.get("current_password", "")
-    new_password = request.form.get("new_password", "")
-    confirm_password = request.form.get("confirm_password", "")
-
-    if not current_password or not new_password or not confirm_password:
-        flash("Please fill in all password fields.", "error")
-        return redirect(url_for("profile"))
-
-    if not check_password_hash(u["password_hash"], current_password):
-        flash("Current password is incorrect.", "error")
-        return redirect(url_for("profile"))
-
-    if len(new_password) < 8:
-        flash("New password must be at least 8 characters.", "error")
-        return redirect(url_for("profile"))
-
-    if new_password != confirm_password:
-        flash("New password and confirmation do not match.", "error")
-        return redirect(url_for("profile"))
-
-    if check_password_hash(u["password_hash"], new_password):
-        flash("Your new password must be different from your current password.", "error")
-        return redirect(url_for("profile"))
-
-    conn = db()
-    try:
-        conn.execute(
-            "UPDATE users SET password_hash=? WHERE id=?",
-            (generate_password_hash(new_password), u["id"]),
-        )
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        flash("Could not change your password. Please try again.", "error")
-        return redirect(url_for("profile"))
-    finally:
-        conn.close()
-
-    flash("Password changed successfully.", "success")
-    return redirect(url_for("profile"))
 
 
 @app.route("/profile", methods=["GET", "POST"])

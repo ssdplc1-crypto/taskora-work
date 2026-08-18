@@ -135,6 +135,8 @@ def init_db():
             account_number TEXT NOT NULL,
             account_name TEXT,
             is_verified INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'pending',
+            rejection_note TEXT,
             created_at TEXT NOT NULL,
             UNIQUE(user_id, account_number)
         );
@@ -180,6 +182,8 @@ def init_db():
         conn.execute(
             "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS task_link TEXT"
         )
+        conn.execute("ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending'")
+        conn.execute("ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS rejection_note TEXT")
 
     else:
         conn.executescript("""
@@ -190,7 +194,7 @@ def init_db():
         );
         CREATE TABLE IF NOT EXISTS bank_accounts (
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, bank_code TEXT NOT NULL, bank_name TEXT NOT NULL,
-            account_number TEXT NOT NULL, account_name TEXT, is_verified INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL,
+            account_number TEXT NOT NULL, account_name TEXT, is_verified INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'pending', rejection_note TEXT, created_at TEXT NOT NULL,
             UNIQUE(user_id, account_number), FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         );
         CREATE TABLE IF NOT EXISTS tasks (
@@ -248,6 +252,16 @@ def init_db():
             conn.execute(
                 "ALTER TABLE submissions ADD COLUMN proof_file TEXT"
             )
+
+        bank_columns = {
+            row[1]
+            for row in conn.execute("PRAGMA table_info(bank_accounts)").fetchall()
+        }
+        if "status" not in bank_columns:
+            conn.execute("ALTER TABLE bank_accounts ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'")
+        if "rejection_note" not in bank_columns:
+            conn.execute("ALTER TABLE bank_accounts ADD COLUMN rejection_note TEXT")
+        conn.execute("UPDATE bank_accounts SET status='verified' WHERE is_verified=1 AND (status IS NULL OR status='pending')")
     admin = conn.execute("SELECT id FROM users WHERE role='admin' LIMIT 1").fetchone()
     if not admin:
         conn.execute(
@@ -1103,7 +1117,7 @@ def profile():
         else:
             try:
                 conn.execute(
-                    "INSERT INTO bank_accounts(user_id,bank_code,bank_name,account_number,account_name,created_at) VALUES(?,?,?,?,?,?)",
+                    "INSERT INTO bank_accounts(user_id,bank_code,bank_name,account_number,account_name,is_verified,status,rejection_note,created_at) VALUES(?,?,?,?,?,0,'pending',NULL,?)",
                     (u["id"], bank_code, bank_name, account_number, account_name, now())
                 )
                 conn.commit()
@@ -1138,8 +1152,12 @@ def withdraw():
     if not bank:
         flash("Select a valid bank account first.", "error")
         return redirect(url_for("wallet"))
-    if not bank["is_verified"]:
-        flash("Your bank account must be verified before withdrawal.", "error")
+    if str(bank["status"] or "pending").lower() == "rejected":
+        reason = bank["rejection_note"] or "This bank account was rejected by admin."
+        flash(f"Bank account rejected: {reason}", "error")
+        return redirect(url_for("wallet"))
+    if not bank["is_verified"] or str(bank["status"] or "pending").lower() != "verified":
+        flash("Your bank account must be verified by admin before withdrawal.", "error")
         return redirect(url_for("wallet"))
 
     # Prevent duplicate requests while another payout is still being processed.
@@ -1202,63 +1220,6 @@ def admin_dashboard():
     """).fetchall()
     conn.close()
     return render_template("admin.html", stats=stats, withdrawals=recent_withdrawals)
-
-
-@app.route("/admin/tasks")
-@admin_required
-def admin_tasks():
-    """List all tasks for admin management, regardless of deadline."""
-    conn = db()
-    tasks = conn.execute("""
-        SELECT
-            t.*,
-            COUNT(s.id) AS submission_count,
-            SUM(CASE WHEN s.status='pending' THEN 1 ELSE 0 END) AS pending_submissions
-        FROM tasks t
-        LEFT JOIN submissions s ON s.task_id=t.id
-        GROUP BY t.id
-        ORDER BY t.id DESC
-    """).fetchall()
-    conn.close()
-    return render_template("admin_tasks.html", tasks=tasks)
-
-
-@app.route("/admin/tasks/<int:task_id>/delete", methods=["POST"])
-@admin_required
-def admin_delete_task(task_id):
-    """Delete any task at any time, including tasks whose deadline has not passed."""
-    conn = db()
-    try:
-        task = conn.execute("SELECT id, title FROM tasks WHERE id=?", (task_id,)).fetchone()
-        if not task:
-            flash("Task not found.", "error")
-            return redirect(url_for("admin_tasks"))
-
-        # Do not leave pending ledger entries behind when submissions are removed.
-        # Approved/available earnings are intentionally preserved.
-        submissions = conn.execute(
-            "SELECT id, user_id FROM submissions WHERE task_id=?",
-            (task_id,),
-        ).fetchall()
-        for submission in submissions:
-            ref = f"TASKORA-EARN-{submission['user_id']}-{submission['id']}"
-            conn.execute(
-                "UPDATE ledger SET status='rejected', description=? "
-                "WHERE reference=? AND user_id=? AND kind='earning' AND status='pending'",
-                (f"Task deleted by admin: {task['title']}", ref, submission['user_id']),
-            )
-
-        # submissions.task_id uses ON DELETE CASCADE, so related submissions are removed.
-        conn.execute("DELETE FROM tasks WHERE id=?", (task_id,))
-        conn.commit()
-        flash("Task deleted successfully.", "success")
-    except Exception as e:
-        conn.rollback()
-        flash(f"Could not delete task: {str(e)}", "error")
-    finally:
-        conn.close()
-
-    return redirect(url_for("admin_tasks"))
 
 
 @app.route("/admin/tasks/new", methods=["GET", "POST"])
@@ -1461,13 +1422,16 @@ def admin_withdrawals():
 def admin_pay_withdrawal(withdrawal_id):
     conn = db()
     w = conn.execute("""
-        SELECT w.*,u.full_name,b.bank_code,b.account_number,b.account_name
+        SELECT w.*,u.full_name,b.bank_code,b.account_number,b.account_name,b.is_verified,b.status AS bank_status,b.rejection_note
         FROM withdrawals w JOIN users u ON u.id=w.user_id
         JOIN bank_accounts b ON b.id=w.bank_account_id WHERE w.id=?
     """, (withdrawal_id,)).fetchone()
     conn.close()
     if not w or w["status"] != "pending":
         flash("Withdrawal is not pending.", "error")
+        return redirect(url_for("admin_withdrawals"))
+    if not w["is_verified"] or str(w["bank_status"] or "pending").lower() != "verified":
+        flash("This withdrawal cannot be paid because the bank account is not verified.", "error")
         return redirect(url_for("admin_withdrawals"))
 
     payload = {
@@ -1516,10 +1480,29 @@ def admin_verify_bank(bank_id):
         conn.close()
         flash("Bank account not found.", "error")
         return redirect(url_for("admin_users"))
-    conn.execute("UPDATE bank_accounts SET is_verified=1 WHERE id=?", (bank_id,))
+    conn.execute("UPDATE bank_accounts SET is_verified=1, status='verified', rejection_note=NULL WHERE id=?", (bank_id,))
     conn.commit()
     conn.close()
-    flash("Bank account verified.", "success")
+    flash("Bank account verified. The user can now withdraw with this account.", "success")
+    return redirect(url_for("admin_users"))
+
+
+@app.route("/admin/banks/<int:bank_id>/reject", methods=["POST"])
+@admin_required
+def admin_reject_bank(bank_id):
+    conn = db()
+    bank = conn.execute("SELECT id FROM bank_accounts WHERE id=?", (bank_id,)).fetchone()
+    if not bank:
+        conn.close()
+        flash("Bank account not found.", "error")
+        return redirect(url_for("admin_users"))
+    note = request.form.get("note", "Bank account rejected by admin.").strip()[:500]
+    conn.execute("UPDATE bank_accounts SET is_verified=0, status='rejected', rejection_note=? WHERE id=?", (note, bank_id))
+    # Any still-pending withdrawal using this account is rejected too, returning its amount to available balance.
+    conn.execute("UPDATE withdrawals SET status='rejected', note=?, processed_at=? WHERE bank_account_id=? AND status='pending'", (f"Bank account rejected: {note}", now(), bank_id))
+    conn.commit()
+    conn.close()
+    flash("Bank account rejected. Any pending withdrawal using it was also rejected and the amount is available again.", "success")
     return redirect(url_for("admin_users"))
 
 

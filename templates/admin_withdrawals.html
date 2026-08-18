@@ -1,8 +1,49 @@
 {% extends "base.html" %}
 {% block title %}Withdrawals — TASKORA WORK{% endblock %}
 {% block content %}
-<div class="page-head"><div><span class="eyebrow">ADMIN</span><h1>Weekly withdrawals</h1></div></div>
-<div class="table-wrap"><table><tr><th>User</th><th>Amount</th><th>Net</th><th>Bank</th><th>Status</th><th>Action</th></tr>
-{% for w in withdrawals %}<tr><td>{{ w.full_name }}<br><small>{{ w.email }}</small></td><td>₦{{ "{:,}".format(w.amount) }}</td><td>₦{{ "{:,}".format(w.net_amount) }}</td><td>{{ w.bank_name }}<br>{{ w.account_number }}<br>{{ w.account_name or "" }}</td><td>{{ w.status }}</td><td>{% if w.status == 'pending' %}<form method="post" action="{{ url_for('admin_pay_withdrawal', withdrawal_id=w.id) }}"><button class="btn small" type="submit">Send to Flutterwave</button></form>{% endif %}</td></tr>{% else %}<tr><td colspan="6">No withdrawals.</td></tr>{% endfor %}
-</table></div>
+<div class="container">
+  <h1>Weekly Withdrawals</h1>
+  <p>Review pending withdrawals before sending them to Flutterwave.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>User</th><th>Bank</th><th>Account</th><th>Amount</th><th>Net</th><th>Status</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for w in withdrawals %}
+        <tr>
+          <td><strong>{{ w.full_name }}</strong><br><small>{{ w.email }}</small></td>
+          <td>{{ w.bank_name }}<br><small>{{ w.bank_code }}</small></td>
+          <td>{{ w.account_number }}<br><small>{{ w.account_name or '' }}</small></td>
+          <td>₦{{ "{:,.0f}".format(w.amount) }}</td>
+          <td>₦{{ "{:,.0f}".format(w.net_amount) }}</td>
+          <td>{{ w.status|upper }}</td>
+          <td>
+            {% if w.status == 'pending' %}
+              <form method="post" action="{{ url_for('admin_pay_withdrawal', withdrawal_id=w.id) }}" style="display:inline-block;margin:2px">
+                <button class="btn" type="submit" onclick="return confirm('Send this withdrawal to Flutterwave?')">Send to Flutterwave</button>
+              </form>
+              <form method="post" action="{{ url_for('admin_reject_withdrawal', withdrawal_id=w.id) }}" style="display:inline-block;margin:2px">
+                <input name="note" placeholder="Reason (optional)" maxlength="500" style="max-width:180px">
+                <button class="btn" type="submit" onclick="return confirm('Reject this withdrawal? The amount will become available again.')">Reject</button>
+              </form>
+            {% elif w.status == 'processing' %}
+              <form method="post" action="{{ url_for('admin_refresh_withdrawal', withdrawal_id=w.id) }}" style="display:inline-block;margin:2px">
+                <button class="btn" type="submit">Refresh Status</button>
+              </form>
+            {% else %}
+              <small>{{ w.note or '—' }}</small>
+            {% endif %}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="7">No withdrawals found.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}

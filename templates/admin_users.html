@@ -1,67 +1,69 @@
 {% extends "base.html" %}
-{% block title %}Workers & Bank Accounts — TASKORA WORK{% endblock %}
+{% block title %}Workers · TASKORA WORK{% endblock %}
 {% block content %}
-<div class="container">
-  <h1>Workers & Bank Accounts</h1>
-  <p>Verify or reject bank account numbers before they can be used for withdrawal.</p>
-
-  <h2>Bank Accounts</h2>
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr><th>User ID</th><th>Bank</th><th>Account Number</th><th>Account Name</th><th>Status</th><th>Action</th></tr>
-      </thead>
-      <tbody>
-      {% for b in banks %}
-        <tr>
-          <td>{{ b.user_id }}</td>
-          <td>{{ b.bank_name }}<br><small>{{ b.bank_code }}</small></td>
-          <td>{{ b.account_number }}</td>
-          <td>{{ b.account_name or '—' }}</td>
-          <td>{{ (b.status or ('verified' if b.is_verified else 'pending'))|upper }}</td>
-          <td>
-            {% if (b.status or ('verified' if b.is_verified else 'pending')) != 'verified' %}
-              <form method="post" action="{{ url_for('admin_verify_bank', bank_id=b.id) }}" style="display:inline-block;margin:2px">
-                <button class="btn" type="submit">Verify</button>
-              </form>
-            {% endif %}
-            {% if (b.status or ('verified' if b.is_verified else 'pending')) != 'rejected' %}
-              <form method="post" action="{{ url_for('admin_reject_bank', bank_id=b.id) }}" style="display:inline-block;margin:2px">
-                <input name="note" placeholder="Reason (optional)" maxlength="500" style="max-width:180px">
-                <button class="btn" type="submit" onclick="return confirm('Reject this bank account number?')">Reject Account</button>
-              </form>
-            {% else %}
-              <small>{{ b.rejection_note or 'Rejected' }}</small>
-            {% endif %}
-          </td>
-        </tr>
-      {% else %}
-        <tr><td colspan="6">No bank accounts found.</td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
+<section class="hero">
+  <div>
+    <div class="eyebrow">ADMIN</div>
+    <h1>Workers</h1>
+    <p class="muted">Manage registered workers and their saved bank accounts.</p>
   </div>
+</section>
 
-  <h2 style="margin-top:32px">Workers</h2>
+<div class="card admin-card">
+  <h2>Workers</h2>
+  {% if users %}
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Activated</th><th>Action</th></tr></thead>
+      <thead><tr><th>Worker</th><th>Phone</th><th>Status</th><th>Action</th></tr></thead>
       <tbody>
       {% for u in users %}
         <tr>
-          <td>{{ u.full_name }}</td><td>{{ u.email }}</td><td>{{ u.phone }}</td>
-          <td>{{ 'YES' if u.activated else 'NO' }}</td>
+          <td><strong>{{ u.full_name }}</strong><div class="muted">{{ u.email }}</div></td>
+          <td>{{ u.phone }}</td>
+          <td>{{ 'Active' if u.activated else 'Inactive' }}</td>
           <td>
             <form method="post" action="{{ url_for('admin_toggle_activation', user_id=u.id) }}">
-              <button class="btn" type="submit">{{ 'Deactivate' if u.activated else 'Activate' }}</button>
+              <button class="btn small" type="submit">{{ 'Deactivate' if u.activated else 'Activate' }}</button>
             </form>
           </td>
         </tr>
-      {% else %}
-        <tr><td colspan="5">No workers found.</td></tr>
       {% endfor %}
       </tbody>
     </table>
   </div>
+  {% else %}<p class="muted">No workers found.</p>{% endif %}
+</div>
+
+<div class="card admin-card" style="margin-top:16px;">
+  <h2>Bank Accounts</h2>
+  {% if banks %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Bank</th><th>Account</th><th>Name</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody>
+      {% for b in banks %}
+        <tr>
+          <td><strong>{{ b.bank_name }}</strong><div class="muted">{{ b.bank_code }}</div></td>
+          <td>{{ b.account_number }}</td>
+          <td>{{ b.account_name or '—' }}</td>
+          <td>{{ 'Verified' if b.is_verified else 'Pending' }}</td>
+          <td>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              {% if not b.is_verified %}
+              <form method="post" action="{{ url_for('admin_verify_bank', bank_id=b.id) }}">
+                <button class="btn small" type="submit">Verify</button>
+              </form>
+              {% endif %}
+              <form method="post" action="{{ url_for('admin_delete_bank', bank_id=b.id) }}" onsubmit="return confirm('Delete this bank account permanently?');">
+                <button class="btn small danger" type="submit">Delete</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<p class="muted">No bank accounts saved.</p>{% endif %}
 </div>
 {% endblock %}

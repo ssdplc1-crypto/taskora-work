@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}TASKORA AI · Admin{% endblock %}
+{% block content %}
+<section class="hero">
+  <div>
+    <div class="eyebrow">ADMIN AI</div>
+    <h1>TASKORA AI</h1>
+    <p class="muted">Use the OpenAI assistant for planning, support drafts, task ideas and admin help.</p>
+  </div>
+</section>
+
+<div class="card admin-ai-card">
+  {% if ai_ready %}
+    <div class="ai-ready">● AI key detected on the server · {{ ai_model }}</div>
+  {% else %}
+    <div class="notice">OpenAI is not configured yet. Add <strong>OPENAI_API_KEY</strong> in Render Environment Variables and redeploy.</div>
+  {% endif %}
+
+  <form method="post">
+    <label for="prompt">Ask TASKORA AI</label>
+    <textarea id="prompt" name="prompt" rows="6" maxlength="6000" placeholder="Example: Give me 5 verified TikTok task ideas for Nigerian workers.">{{ prompt }}</textarea>
+    <button class="btn full" type="submit" {% if not ai_ready %}disabled{% endif %}>Ask TASKORA AI</button>
+  </form>
+
+  {% if answer %}
+    <div class="ai-answer">
+      <div class="eyebrow">AI RESPONSE</div>
+      <div class="ai-answer-text">{{ answer }}</div>
+    </div>
+  {% endif %}
+</div>
+
+<style>
+.admin-ai-card{max-width:820px;margin:0 auto;padding:20px}
+.ai-ready{background:#eaf8ef;color:#137a3b;border:1px solid #ccebd7;border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:15px}
+.ai-answer{margin-top:18px;border:1px solid var(--line);border-radius:12px;background:var(--soft);padding:14px}
+.ai-answer-text{margin-top:8px;white-space:pre-wrap;word-break:break-word;line-height:1.6;font-size:14px}
+button:disabled{opacity:.55;cursor:not-allowed}
+</style>
+{% endblock %}

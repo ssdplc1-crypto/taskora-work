@@ -1,82 +1,49 @@
 {% extends "base.html" %}
-{% block title %}Task Submissions — TASKORA WORK{% endblock %}
+{% block title %}Submissions · TASKORA WORK{% endblock %}
 {% block content %}
-<div class="page-head">
-  <div>
-    <span class="eyebrow">ADMIN</span>
-    <h1>Task Submissions</h1>
-    <p>Review worker proof before approving earnings.</p>
-  </div>
-</div>
+<section class="hero">
+  <div><div class="eyebrow">ADMIN</div><h1>Submissions</h1><p class="muted">Review proof and approve or reject worker submissions.</p></div>
+</section>
 
-<div style="display:grid;gap:20px;">
+<div class="card admin-card">
+{% if submissions %}
+<div class="table-wrap">
+<table class="compact-table">
+<thead><tr><th>Worker</th><th>Task</th><th>Proof</th><th>Status</th><th>Action</th></tr></thead>
+<tbody>
 {% for s in submissions %}
-  <div class="card" style="padding:22px;">
-    <div style="display:flex;justify-content:space-between;gap:15px;flex-wrap:wrap;">
-      <div>
-        <h2 style="margin:0 0 6px;">{{ s.title }}</h2>
-        <div style="color:#647371;"><strong>{{ s.full_name }}</strong> · {{ s.email }}</div>
-      </div>
-      <div>
-        <strong>₦{{ "{:,}".format(s.reward) }}</strong>
-        <div style="margin-top:5px;"><span class="pill">{{ s.status }}</span></div>
-      </div>
-    </div>
-
-    <hr style="border:0;border-top:1px solid #e5eceb;margin:18px 0;">
-
-    <h3>Worker proof/details</h3>
-    <div style="background:#f2f8f7;border:1px solid #e5eceb;border-radius:12px;padding:14px;white-space:pre-wrap;word-break:break-word;">
-      {{ s.proof }}
-    </div>
-
-    <div style="margin-top:20px;">
-      <h3>Screenshot proof</h3>
-      {% if s.proof_file %}
-        <div style="border:1px solid #e5eceb;border-radius:14px;padding:10px;background:#fff;">
-          <img src="{{ s.proof_file }}"
-               alt="Worker task screenshot proof"
-               style="display:block;width:100%;max-height:650px;object-fit:contain;border-radius:10px;">
-        </div>
-      {% else %}
-        <div class="notice">No screenshot was uploaded with this submission.</div>
-      {% endif %}
-    </div>
-
-    <div style="margin-top:18px;color:#647371;font-size:13px;">
-      Submitted: {{ s.submitted_at }}
-    </div>
-
-    {% if s.status == "pending" %}
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px;">
-        <form method="post" action="{{ url_for('review_submission', submission_id=s.id, action='approve') }}">
-          <button class="btn full" type="submit">✓ Approve & Credit</button>
-        </form>
-
-        <form method="post" action="{{ url_for('review_submission', submission_id=s.id, action='reject') }}">
-          <input type="text" name="note" placeholder="Reason for rejection"
-                 style="width:100%;padding:12px;border:1px solid #e5eceb;border-radius:10px;margin-bottom:8px;">
-          <button class="btn danger full" type="submit">Reject</button>
-        </form>
-      </div>
-    {% elif s.reviewer_note %}
-      <div class="notice" style="margin-top:18px;">
-        <strong>Reviewer note</strong>
-        <p>{{ s.reviewer_note }}</p>
-      </div>
-    {% endif %}
-  </div>
-{% else %}
-  <div class="card" style="padding:30px;">
-    <h2>No submissions yet</h2>
-    <p>Worker task submissions will appear here when they are submitted.</p>
-  </div>
+<tr>
+<td><strong>{{ s.full_name }}</strong><div class="muted">{{ s.email }}</div></td>
+<td><strong>{{ s.title }}</strong><div class="muted">Reward ₦{{ "{:,.0f}".format(s.reward) }}</div></td>
+<td>
+{% if s.proof_file %}
+<img class="proof-thumb" src="{{ s.proof_file }}" alt="Screenshot proof" onclick="openProof(this.src)">
+{% else %}<span class="muted">No image</span>{% endif %}
+<div class="proof-text">{{ s.proof }}</div>
+</td>
+<td><span class="status status-{{ s.status }}">{{ s.status|capitalize }}</span></td>
+<td>
+{% if s.status == 'pending' %}
+<div class="actions">
+<form method="post" action="{{ url_for('review_submission', submission_id=s.id, action='approve') }}"><button class="btn small" type="submit">Approve</button></form>
+<form method="post" action="{{ url_for('review_submission', submission_id=s.id, action='reject') }}" onsubmit="return rejectSubmission(this);"><input type="hidden" name="note" value=""><button class="btn small danger" type="submit">Reject</button></form>
+</div>
+{% else %}<span class="muted">Reviewed</span>{% endif %}
+</td>
+</tr>
 {% endfor %}
+</tbody></table>
+</div>
+{% else %}<div class="empty-state"><h2>No submissions</h2><p class="muted">New worker submissions will appear here.</p></div>{% endif %}
 </div>
 
+<div id="proofModal" class="proof-modal" onclick="closeProof()"><div class="proof-modal-inner" onclick="event.stopPropagation()"><button class="proof-close" onclick="closeProof()">×</button><img id="proofLarge" alt="Screenshot proof"></div></div>
 <style>
-@media (max-width:700px) {
-  .card form[method="post"] { min-width:0; }
-}
+.compact-table th,.compact-table td{padding:8px 9px;font-size:12px;vertical-align:top}.compact-table .muted{font-size:11px}.proof-thumb{width:78px;height:58px;object-fit:cover;border-radius:8px;border:1px solid #dce8e5;cursor:pointer;display:block;margin-bottom:5px}.proof-text{max-width:180px;max-height:45px;overflow:hidden;line-height:1.35;color:#53615f}.actions{display:flex;gap:5px;flex-wrap:wrap}.status{font-weight:700;font-size:11px}.status-pending{color:#b77900}.status-approved{color:#087c68}.status-rejected{color:#b42318}.proof-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:100001;align-items:center;justify-content:center;padding:14px}.proof-modal.show{display:flex}.proof-modal-inner{position:relative;max-width:92vw;max-height:92vh}.proof-modal img{max-width:92vw;max-height:88vh;border-radius:12px;background:#fff}.proof-close{position:absolute;right:-4px;top:-42px;width:34px;height:34px;border:0;border-radius:50%;font-size:24px;cursor:pointer}.admin-card{overflow:hidden}
 </style>
+<script>
+function openProof(src){document.getElementById('proofLarge').src=src;document.getElementById('proofModal').classList.add('show')}
+function closeProof(){document.getElementById('proofModal').classList.remove('show')}
+function rejectSubmission(form){var note=prompt('Reason for rejection (optional):','Task submission rejected.');if(note===null)return false;form.querySelector('input[name="note"]').value=note.slice(0,500);return true}
+</script>
 {% endblock %}

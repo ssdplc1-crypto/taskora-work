@@ -542,6 +542,7 @@
     {% if current_user %}
       {% if current_user.role == 'admin' %}
         <a href="{{ url_for('admin_dashboard') }}">Admin</a>
+        <a href="{{ url_for('admin_tasks') }}">Tasks</a>
         <a href="{{ url_for('admin_submissions') }}">Submissions</a>
         <a href="{{ url_for('admin_withdrawals') }}">Withdrawals</a>
         <a href="{{ url_for('admin_users') }}">Workers</a>

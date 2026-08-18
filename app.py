@@ -1204,6 +1204,63 @@ def admin_dashboard():
     return render_template("admin.html", stats=stats, withdrawals=recent_withdrawals)
 
 
+@app.route("/admin/tasks")
+@admin_required
+def admin_tasks():
+    """List all tasks for admin management, regardless of deadline."""
+    conn = db()
+    tasks = conn.execute("""
+        SELECT
+            t.*,
+            COUNT(s.id) AS submission_count,
+            SUM(CASE WHEN s.status='pending' THEN 1 ELSE 0 END) AS pending_submissions
+        FROM tasks t
+        LEFT JOIN submissions s ON s.task_id=t.id
+        GROUP BY t.id
+        ORDER BY t.id DESC
+    """).fetchall()
+    conn.close()
+    return render_template("admin_tasks.html", tasks=tasks)
+
+
+@app.route("/admin/tasks/<int:task_id>/delete", methods=["POST"])
+@admin_required
+def admin_delete_task(task_id):
+    """Delete any task at any time, including tasks whose deadline has not passed."""
+    conn = db()
+    try:
+        task = conn.execute("SELECT id, title FROM tasks WHERE id=?", (task_id,)).fetchone()
+        if not task:
+            flash("Task not found.", "error")
+            return redirect(url_for("admin_tasks"))
+
+        # Do not leave pending ledger entries behind when submissions are removed.
+        # Approved/available earnings are intentionally preserved.
+        submissions = conn.execute(
+            "SELECT id, user_id FROM submissions WHERE task_id=?",
+            (task_id,),
+        ).fetchall()
+        for submission in submissions:
+            ref = f"TASKORA-EARN-{submission['user_id']}-{submission['id']}"
+            conn.execute(
+                "UPDATE ledger SET status='rejected', description=? "
+                "WHERE reference=? AND user_id=? AND kind='earning' AND status='pending'",
+                (f"Task deleted by admin: {task['title']}", ref, submission['user_id']),
+            )
+
+        # submissions.task_id uses ON DELETE CASCADE, so related submissions are removed.
+        conn.execute("DELETE FROM tasks WHERE id=?", (task_id,))
+        conn.commit()
+        flash("Task deleted successfully.", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Could not delete task: {str(e)}", "error")
+    finally:
+        conn.close()
+
+    return redirect(url_for("admin_tasks"))
+
+
 @app.route("/admin/tasks/new", methods=["GET", "POST"])
 @admin_required
 def admin_new_task():

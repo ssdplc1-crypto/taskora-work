@@ -153,6 +153,8 @@ def init_db():
             account_number TEXT NOT NULL,
             account_name TEXT,
             is_verified INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'pending',
+            rejection_note TEXT,
             is_deleted INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
             UNIQUE(user_id, account_number)
@@ -210,7 +212,8 @@ def init_db():
         );
         CREATE TABLE IF NOT EXISTS bank_accounts (
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, bank_code TEXT NOT NULL, bank_name TEXT NOT NULL,
-            account_number TEXT NOT NULL, account_name TEXT, is_verified INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL,
+            account_number TEXT NOT NULL, account_name TEXT, is_verified INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'pending', rejection_note TEXT, is_deleted INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL,
             UNIQUE(user_id, account_number), FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         );
         CREATE TABLE IF NOT EXISTS tasks (
@@ -275,11 +278,28 @@ def init_db():
             ("TASKORA Admin", "admin@taskora.local", "0000000000",
              generate_password_hash(os.environ.get("ADMIN_PASSWORD", "ChangeMe123!")), "admin", 1, now())
         )
-    # Backward-compatible migration for existing databases.
-    try:
-        conn.execute("ALTER TABLE bank_accounts ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0")
-    except Exception:
-        pass
+    # Backward-compatible migrations for existing databases.
+    # These are intentionally idempotent so Render/PostgreSQL and local SQLite
+    # databases can both be upgraded without losing existing users or money.
+    if conn.is_postgres:
+        for statement in (
+            "ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS is_deleted INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending'",
+            "ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS rejection_note TEXT",
+        ):
+            conn.execute(statement)
+    else:
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(bank_accounts)").fetchall()}
+        if "is_deleted" not in columns:
+            conn.execute("ALTER TABLE bank_accounts ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0")
+        if "status" not in columns:
+            conn.execute("ALTER TABLE bank_accounts ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'")
+        if "rejection_note" not in columns:
+            conn.execute("ALTER TABLE bank_accounts ADD COLUMN rejection_note TEXT")
+
+    # Keep old verified accounts consistent with the new status field.
+    conn.execute("UPDATE bank_accounts SET status='verified' WHERE is_verified=1 AND (status IS NULL OR status='pending')")
+    conn.execute("UPDATE bank_accounts SET status='pending' WHERE status IS NULL OR status=''")
 
     conn.commit()
     conn.close()
@@ -1129,8 +1149,8 @@ def profile():
         else:
             try:
                 conn.execute(
-                    "INSERT INTO bank_accounts(user_id,bank_code,bank_name,account_number,account_name,created_at) VALUES(?,?,?,?,?,?)",
-                    (u["id"], bank_code, bank_name, account_number, account_name, now())
+                    "INSERT INTO bank_accounts(user_id,bank_code,bank_name,account_number,account_name,is_verified,status,created_at) VALUES(?,?,?,?,?,?,?,?)",
+                    (u["id"], bank_code, bank_name, account_number, account_name, 0, "pending", now())
                 )
                 conn.commit()
                 flash("Bank account saved. Verify the account name before withdrawing.", "success")
@@ -1164,7 +1184,7 @@ def withdraw():
     if not bank:
         flash("Select a valid bank account first.", "error")
         return redirect(url_for("wallet"))
-    if not bank["is_verified"]:
+    if not bank["is_verified"] or (bank["status"] if "status" in bank.keys() else "pending") != "verified":
         flash("Your bank account must be verified before withdrawal.", "error")
         return redirect(url_for("wallet"))
 
@@ -1495,7 +1515,13 @@ def admin_ai():
                 answer = response.output_text
             except Exception as e:
                 flash(f"TASKORA AI error: {str(e)}", "error")
-    return render_template("admin_ai.html", answer=answer, prompt=prompt, ai_model=OPENAI_MODEL, ai_ready=bool(OPENAI_API_KEY))
+    return render_template(
+        "admin_ai.html",
+        answer=answer,
+        prompt=prompt,
+        ai_model=OPENAI_MODEL,
+        ai_ready=bool(OPENAI_API_KEY and OpenAI is not None),
+    )
 
 
 @app.route("/admin/withdrawals")
@@ -1558,25 +1584,74 @@ def admin_pay_withdrawal(withdrawal_id):
 @admin_required
 def admin_users():
     conn = db()
-    users = conn.execute("SELECT * FROM users WHERE role='worker' ORDER BY id DESC").fetchall()
-    banks = conn.execute("SELECT * FROM bank_accounts WHERE is_deleted=0 ORDER BY id DESC").fetchall()
-    conn.close()
-    return render_template("admin_users.html", users=users, banks=banks)
+    try:
+        users = conn.execute(
+            "SELECT * FROM users WHERE role='worker' ORDER BY id DESC"
+        ).fetchall()
+        banks = conn.execute(
+            "SELECT * FROM bank_accounts WHERE COALESCE(is_deleted,0)=0 ORDER BY id DESC"
+        ).fetchall()
+        return render_template("admin_users.html", users=users, banks=banks)
+    except Exception as e:
+        conn.rollback()
+        flash(f"Could not load workers and bank accounts: {str(e)}", "error")
+        return redirect(url_for("admin_dashboard"))
+    finally:
+        conn.close()
 
 
 @app.route("/admin/banks/<int:bank_id>/verify", methods=["POST"])
 @admin_required
 def admin_verify_bank(bank_id):
     conn = db()
-    bank = conn.execute("SELECT id FROM bank_accounts WHERE id=?", (bank_id,)).fetchone()
-    if not bank:
+    try:
+        bank = conn.execute(
+            "SELECT id FROM bank_accounts WHERE id=? AND COALESCE(is_deleted,0)=0",
+            (bank_id,),
+        ).fetchone()
+        if not bank:
+            flash("Bank account not found.", "error")
+            return redirect(url_for("admin_users"))
+
+        conn.execute(
+            "UPDATE bank_accounts SET is_verified=1,status='verified',rejection_note=NULL WHERE id=?",
+            (bank_id,),
+        )
+        conn.commit()
+        flash("Bank account verified successfully.", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Could not verify bank account: {str(e)}", "error")
+    finally:
         conn.close()
-        flash("Bank account not found.", "error")
-        return redirect(url_for("admin_users"))
-    conn.execute("UPDATE bank_accounts SET is_verified=1 WHERE id=?", (bank_id,))
-    conn.commit()
-    conn.close()
-    flash("Bank account verified.", "success")
+    return redirect(url_for("admin_users"))
+
+
+@app.route("/admin/banks/<int:bank_id>/reject", methods=["POST"])
+@admin_required
+def admin_reject_bank(bank_id):
+    conn = db()
+    try:
+        bank = conn.execute(
+            "SELECT id FROM bank_accounts WHERE id=? AND COALESCE(is_deleted,0)=0",
+            (bank_id,),
+        ).fetchone()
+        if not bank:
+            flash("Bank account not found.", "error")
+            return redirect(url_for("admin_users"))
+
+        note = request.form.get("note", "Bank account rejected by admin.").strip()[:500]
+        conn.execute(
+            "UPDATE bank_accounts SET is_verified=0,status='rejected',rejection_note=? WHERE id=?",
+            (note, bank_id),
+        )
+        conn.commit()
+        flash("Bank account rejected successfully.", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Could not reject bank account: {str(e)}", "error")
+    finally:
+        conn.close()
     return redirect(url_for("admin_users"))
 
 

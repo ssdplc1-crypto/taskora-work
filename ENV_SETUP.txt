@@ -1,0 +1,11 @@
+TASKORA WORK — Render Environment Variables
+
+Add these in Render -> Environment:
+
+OPENAI_API_KEY=YOUR_OPENAI_API_KEY
+OPENAI_MODEL=gpt-5.6-luna
+
+Do NOT put the real API key in GitHub, HTML, JavaScript, app.py, or this file.
+The app reads OPENAI_API_KEY only from the server environment.
+
+The new Admin -> AI page is available at /admin/ai after redeploy.

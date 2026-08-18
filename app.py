@@ -16,6 +16,12 @@ from zoneinfo import ZoneInfo
 from functools import wraps
 
 import requests
+
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None
+
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -40,6 +46,18 @@ FLUTTERWAVE_PAYMENT_LINK = os.environ.get(
     "FLUTTERWAVE_PAYMENT_LINK",
     "https://flutterwave.com/pay/io7rwhtgumk4"
 ).strip()
+
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "").strip()
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.6-luna").strip() or "gpt-5.6-luna"
+
+
+def get_openai_client():
+    """Return an OpenAI client using the server-side environment key only."""
+    if not OPENAI_API_KEY:
+        raise RuntimeError("OPENAI_API_KEY is not configured on the server.")
+    if OpenAI is None:
+        raise RuntimeError("OpenAI SDK is not installed. Add openai to requirements.txt and redeploy.")
+    return OpenAI(api_key=OPENAI_API_KEY)
 
 
 class DBConnection:
@@ -135,6 +153,7 @@ def init_db():
             account_number TEXT NOT NULL,
             account_name TEXT,
             is_verified INTEGER NOT NULL DEFAULT 0,
+            is_deleted INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
             UNIQUE(user_id, account_number)
         );
@@ -180,6 +199,7 @@ def init_db():
         conn.execute(
             "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS task_link TEXT"
         )
+        conn.execute("ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS is_deleted INTEGER NOT NULL DEFAULT 0")
 
     else:
         conn.executescript("""
@@ -255,6 +275,12 @@ def init_db():
             ("TASKORA Admin", "admin@taskora.local", "0000000000",
              generate_password_hash(os.environ.get("ADMIN_PASSWORD", "ChangeMe123!")), "admin", 1, now())
         )
+    # Backward-compatible migration for existing databases.
+    try:
+        conn.execute("ALTER TABLE bank_accounts ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0")
+    except Exception:
+        pass
+
     conn.commit()
     conn.close()
 
@@ -1026,10 +1052,10 @@ def wallet():
         "SELECT * FROM ledger WHERE user_id=? ORDER BY id DESC LIMIT 50", (u["id"],)
     ).fetchall()
     withdrawals = conn.execute(
-        "SELECT w.*, b.bank_name,b.account_number FROM withdrawals w JOIN bank_accounts b ON b.id=w.bank_account_id WHERE w.user_id=? ORDER BY w.id DESC LIMIT 30",
+        "SELECT w.*, b.bank_name,b.account_number FROM withdrawals w JOIN bank_accounts b ON b.id=w.bank_account_id WHERE w.user_id=? AND w.status <> 'rejected' ORDER BY w.id DESC LIMIT 30",
         (u["id"],)
     ).fetchall()
-    banks = conn.execute("SELECT * FROM bank_accounts WHERE user_id=? ORDER BY id DESC", (u["id"],)).fetchall()
+    banks = conn.execute("SELECT * FROM bank_accounts WHERE user_id=? AND is_deleted=0 ORDER BY id DESC", (u["id"],)).fetchall()
     conn.close()
     return render_template("wallet.html", balance=available_balance(u["id"]), pending=pending_balance(u["id"]),
                            ledger=ledger, withdrawals=withdrawals, banks=banks)
@@ -1110,7 +1136,7 @@ def profile():
                 flash("Bank account saved. Verify the account name before withdrawing.", "success")
             except Exception:
                 flash("That bank account is already saved.", "error")
-    banks = conn.execute("SELECT * FROM bank_accounts WHERE user_id=? ORDER BY id DESC", (u["id"],)).fetchall()
+    banks = conn.execute("SELECT * FROM bank_accounts WHERE user_id=? AND is_deleted=0 ORDER BY id DESC", (u["id"],)).fetchall()
     conn.close()
     return render_template("profile.html", user=u, banks=banks)
 
@@ -1133,7 +1159,7 @@ def withdraw():
         return redirect(url_for("wallet"))
 
     conn = db()
-    bank = conn.execute("SELECT * FROM bank_accounts WHERE id=? AND user_id=?", (bank_id, u["id"])).fetchone()
+    bank = conn.execute("SELECT * FROM bank_accounts WHERE id=? AND user_id=? AND is_deleted=0", (bank_id, u["id"])).fetchone()
     conn.close()
     if not bank:
         flash("Select a valid bank account first.", "error")
@@ -1442,6 +1468,36 @@ def review_submission(submission_id, action):
     return redirect(url_for("admin_submissions"))
 
 
+@app.route("/admin/ai", methods=["GET", "POST"])
+@admin_required
+def admin_ai():
+    answer = None
+    prompt = ""
+    if request.method == "POST":
+        prompt = request.form.get("prompt", "").strip()
+        if not prompt:
+            flash("Enter a question or instruction for TASKORA AI.", "error")
+        elif len(prompt) > 6000:
+            flash("AI request is too long. Please keep it under 6000 characters.", "error")
+        else:
+            try:
+                client = get_openai_client()
+                response = client.responses.create(
+                    model=OPENAI_MODEL,
+                    instructions=(
+                        "You are TASKORA AI, the internal assistant for TASKORA WORK. "
+                        "Give concise, practical help to the administrator. Do not invent "
+                        "financial transactions, user records, or system actions. "
+                        "If you do not know something, say so clearly."
+                    ),
+                    input=prompt,
+                )
+                answer = response.output_text
+            except Exception as e:
+                flash(f"TASKORA AI error: {str(e)}", "error")
+    return render_template("admin_ai.html", answer=answer, prompt=prompt, ai_model=OPENAI_MODEL, ai_ready=bool(OPENAI_API_KEY))
+
+
 @app.route("/admin/withdrawals")
 @admin_required
 def admin_withdrawals():
@@ -1450,6 +1506,7 @@ def admin_withdrawals():
         SELECT w.*,u.full_name,u.email,b.bank_name,b.bank_code,b.account_number,b.account_name
         FROM withdrawals w JOIN users u ON u.id=w.user_id
         JOIN bank_accounts b ON b.id=w.bank_account_id
+        WHERE w.status <> 'rejected'
         ORDER BY CASE WHEN w.status='pending' THEN 0 ELSE 1 END,w.id DESC
     """).fetchall()
     conn.close()
@@ -1502,7 +1559,7 @@ def admin_pay_withdrawal(withdrawal_id):
 def admin_users():
     conn = db()
     users = conn.execute("SELECT * FROM users WHERE role='worker' ORDER BY id DESC").fetchall()
-    banks = conn.execute("SELECT * FROM bank_accounts ORDER BY id DESC").fetchall()
+    banks = conn.execute("SELECT * FROM bank_accounts WHERE is_deleted=0 ORDER BY id DESC").fetchall()
     conn.close()
     return render_template("admin_users.html", users=users, banks=banks)
 
@@ -1520,6 +1577,38 @@ def admin_verify_bank(bank_id):
     conn.commit()
     conn.close()
     flash("Bank account verified.", "success")
+    return redirect(url_for("admin_users"))
+
+
+@app.route("/admin/banks/<int:bank_id>/delete", methods=["POST"])
+@admin_required
+def admin_delete_bank(bank_id):
+    conn = db()
+    try:
+        bank = conn.execute("SELECT id FROM bank_accounts WHERE id=? AND is_deleted=0", (bank_id,)).fetchone()
+        if not bank:
+            flash("Bank account not found.", "error")
+            return redirect(url_for("admin_users"))
+
+        linked = conn.execute(
+            "SELECT COUNT(*) FROM withdrawals WHERE bank_account_id=?",
+            (bank_id,),
+        ).fetchone()[0]
+
+        if linked:
+            # Preserve financial history while removing the account from all
+            # normal user/admin views.
+            conn.execute("UPDATE bank_accounts SET is_deleted=1 WHERE id=?", (bank_id,))
+        else:
+            conn.execute("DELETE FROM bank_accounts WHERE id=?", (bank_id,))
+
+        conn.commit()
+        flash("Bank account removed successfully.", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Could not remove bank account: {str(e)}", "error")
+    finally:
+        conn.close()
     return redirect(url_for("admin_users"))
 
 

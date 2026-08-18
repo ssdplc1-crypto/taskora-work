@@ -1,0 +1,40 @@
+TASKORA WORK — FIXED FILES
+
+1. app.py
+   - Added OpenAI server-side integration using OPENAI_API_KEY.
+   - Added Admin AI page at /admin/ai.
+   - Added admin bank-account removal route.
+   - Bank deletion hides the account from normal views while preserving linked withdrawal history.
+   - Rejected withdrawals are hidden from Admin Withdrawals and the worker Wallet normal list.
+   - Existing withdrawal rejection still returns the amount to available balance.
+   - Added backward-compatible bank_accounts.is_deleted migration.
+
+2. templates/admin_users.html
+   - Workers and bank accounts page.
+   - Verify and Delete actions.
+
+3. templates/admin_task.html
+   - Complete Create Task form matching the current app.py route.
+   - Mobile-friendly compact layout.
+
+4. templates/admin_tasks.html
+   - Manage Tasks page with New Task and Delete Task.
+
+5. templates/admin_submissions.html
+   - Compact submission table.
+   - Small screenshot thumbnails with full-screen preview.
+   - Approve/Reject actions.
+
+6. templates/admin_withdrawals.html
+   - Compact withdrawals table with Pay/Reject.
+
+7. templates/base.html
+   - Added Admin -> AI navigation link.
+
+8. requirements.txt
+   - Added OpenAI SDK.
+
+OpenAI setup:
+   Render Environment Variables:
+   OPENAI_API_KEY = your real key
+   OPENAI_MODEL = gpt-5.6-luna

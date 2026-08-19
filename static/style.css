@@ -1290,3 +1290,16 @@ footer{
   }
 
 }
+
+/* TASKORA WORK — dashboard bottom navigation + referral card */
+.referral-card{margin-top:28px}
+.referral-box{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px;background:#fff;border:1px solid var(--line);border-radius:15px}
+.referral-box strong{font-size:26px;letter-spacing:2px;color:var(--brand)}
+.referral-box span{color:var(--muted);font-size:13px}
+.referral-link{margin-top:9px;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.bottom-nav{display:flex;justify-content:space-around;align-items:center;gap:4px;position:fixed;left:0;right:0;bottom:0;z-index:50;background:#fff;border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -8px 25px rgba(16,32,31,.08)}
+.bottom-nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:70px;padding:5px 9px;border-radius:10px;color:var(--muted);font-size:10px;font-weight:750}
+.bottom-nav a span{font-size:18px;line-height:1}
+.bottom-nav a.active{color:var(--brand);background:var(--soft)}
+@media (min-width:851px){.bottom-nav{max-width:520px;left:50%;right:auto;transform:translateX(-50%);border:1px solid var(--line);border-bottom:0;border-radius:16px 16px 0 0}}
+@media (max-width:600px){.referral-box{align-items:flex-start;flex-direction:column}.referral-box strong{font-size:23px}.bottom-nav a{min-width:58px}}

@@ -1,90 +1,108 @@
 {% extends "base.html" %}
-{% block title %}Admin Submissions — TASKORA WORK
+{% block title %}Admin Submissions — TASKORA WORK{% endblock %}
 
-<div id="proofModal" class="proof-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Submission proof">
-  <div class="proof-modal-backdrop" onclick="closeProof()"></div>
-  <div class="proof-modal-content">
-    <button type="button" class="proof-modal-close" onclick="closeProof()" aria-label="Close proof">×</button>
-    <img id="proofModalImage" class="proof-modal-image" src="" alt="Submission proof">
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">ADMIN · SUBMISSIONS</span>
+    <h1>Submissions</h1>
+    <p class="muted">Preview the worker proof before approving or rejecting the submission.</p>
   </div>
 </div>
 
-<script>
-function openProof(src) {
-  const modal = document.getElementById('proofModal');
-  const image = document.getElementById('proofModalImage');
-  image.src = src;
-  modal.classList.add('open');
-  modal.setAttribute('aria-hidden', 'false');
-  document.body.classList.add('proof-modal-open');
-}
-function closeProof() {
-  const modal = document.getElementById('proofModal');
-  const image = document.getElementById('proofModalImage');
-  modal.classList.remove('open');
-  modal.setAttribute('aria-hidden', 'true');
-  image.src = '';
-  document.body.classList.remove('proof-modal-open');
-}
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closeProof();
-});
-</script>
-
-{% endblock %}
-{% block content %}
-<div class="page-head"><div><span class="eyebrow">ADMIN · SUBMISSIONS</span><h1>Submissions</h1><p class="muted">Open each proof image before approving a worker submission.</p></div></div>
 <div class="submission-list">
 {% for s in submissions %}
 <article class="submission-card">
   <div class="submission-main">
     <div class="submission-platform">{{ s.title }}</div>
-    <div class="submission-worker"><b>{{ s.full_name or s.email }}</b><span>{{ s.email }}</span></div>
+    <div class="submission-worker">
+      <b>{{ s.full_name or s.email }}</b>
+      <span>{{ s.email }}</span>
+    </div>
     <span class="status {{ s.status }}">{{ s.status|title }}</span>
     {% if s.proof %}<p class="proof-text">{{ s.proof }}</p>{% endif %}
   </div>
+
   <div class="proof-panel">
     {% if s.proof_file %}
-      <button type="button" class="proof-image-button" onclick="openProof('{{ s.proof_file|e }}')" aria-label="Open proof image">
-        <img class="proof-image" src="{{ s.proof_file }}" alt="Task proof screenshot" loading="lazy">
-        <span class="proof-open-hint">Tap to view</span>
+      <button
+        type="button"
+        class="proof-image-button"
+        data-proof-src="{{ s.proof_file }}"
+        onclick="openProofFromButton(this)"
+        aria-label="Preview submission proof"
+      >
+        <img
+          class="proof-image"
+          src="{{ s.proof_file }}"
+          alt="Task proof screenshot"
+          loading="lazy"
+        >
+        <span class="proof-open-hint">Tap to preview</span>
       </button>
-    {% else %}<div class="proof-empty">No screenshot uploaded</div>{% endif %}
-    {% if s.status=='pending' %}<div class="actions compact"><form method="post" action="{{url_for('review_submission',submission_id=s.id,action='approve')}}"><button class="btn small" type="submit">Approve</button></form><form method="post" action="{{url_for('review_submission',submission_id=s.id,action='reject')}}"><button class="btn danger small" type="submit">Reject</button></form></div>{% endif %}
+    {% else %}
+      <div class="proof-empty">No screenshot uploaded</div>
+    {% endif %}
+
+    {% if s.status == 'pending' %}
+    <div class="actions compact">
+      <form method="post" action="{{ url_for('review_submission', submission_id=s.id, action='approve') }}">
+        <button class="btn small" type="submit">Approve</button>
+      </form>
+      <form method="post" action="{{ url_for('review_submission', submission_id=s.id, action='reject') }}">
+        <button class="btn danger small" type="submit">Reject</button>
+      </form>
+    </div>
+    {% endif %}
   </div>
 </article>
-{% else %}<div class="empty">No submissions yet.</div>{% endfor %}
+{% else %}
+<div class="empty">No submissions yet.</div>
+{% endfor %}
 </div>
 
-
+<!-- One, and only one, in-app proof viewer -->
 <div id="proofModal" class="proof-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Submission proof">
-  <div class="proof-modal-backdrop" onclick="closeProof()"></div>
+  <div class="proof-modal-backdrop" data-close-proof></div>
   <div class="proof-modal-content">
-    <button type="button" class="proof-modal-close" onclick="closeProof()" aria-label="Close proof">×</button>
+    <button type="button" class="proof-modal-close" data-close-proof aria-label="Close proof">×</button>
     <img id="proofModalImage" class="proof-modal-image" src="" alt="Submission proof">
   </div>
 </div>
 
 <script>
-function openProof(src) {
-  const modal = document.getElementById('proofModal');
-  const image = document.getElementById('proofModalImage');
-  image.src = src;
-  modal.classList.add('open');
-  modal.setAttribute('aria-hidden', 'false');
-  document.body.classList.add('proof-modal-open');
-}
-function closeProof() {
-  const modal = document.getElementById('proofModal');
-  const image = document.getElementById('proofModalImage');
-  modal.classList.remove('open');
-  modal.setAttribute('aria-hidden', 'true');
-  image.src = '';
-  document.body.classList.remove('proof-modal-open');
-}
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closeProof();
-});
-</script>
+(function () {
+  const modal = document.getElementById("proofModal");
+  const image = document.getElementById("proofModalImage");
 
+  window.openProofFromButton = function (button) {
+    if (!modal || !image) return;
+    const src = button.getAttribute("data-proof-src");
+    if (!src) return;
+
+    image.src = src;
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("proof-modal-open");
+  };
+
+  window.closeProof = function () {
+    if (!modal || !image) return;
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+    image.removeAttribute("src");
+    document.body.classList.remove("proof-modal-open");
+  };
+
+  modal.querySelectorAll("[data-close-proof]").forEach(function (el) {
+    el.addEventListener("click", window.closeProof);
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && modal.classList.contains("open")) {
+      window.closeProof();
+    }
+  });
+})();
+</script>
 {% endblock %}

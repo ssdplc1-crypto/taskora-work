@@ -1306,3 +1306,34 @@ footer{
 
 /* TASKORA WORK current UI revision */
 body{padding-bottom:78px}.topbar nav a:not(.btn){display:none!important}.topbar{padding-left:4%;padding-right:4%}.topbar nav{margin-left:auto}.notice.error{background:#fff0ee;color:#9b1c13;border:1px solid #ffd0cb}.notice.success{background:#edf9f2;color:#166534;border:1px solid #ccebd8}.status{display:inline-block;padding:4px 8px;border-radius:999px;background:var(--soft);color:var(--brand);font-size:11px;font-weight:800}.form-card textarea{width:100%;resize:vertical}
+
+/* =========================================================
+   TASKORA WORK V2 — ADMIN + PROFILE + PROOF UI
+========================================================= */
+.role-badge{font-size:10px;font-weight:900;letter-spacing:1.2px;color:#0f766e;background:#e8f6f4;border:1px solid #bfe1dd;border-radius:999px;padding:7px 10px}
+.admin-nav{justify-content:flex-start;overflow-x:auto;scrollbar-width:none;gap:4px}
+.admin-nav::-webkit-scrollbar{display:none}
+.admin-nav a{min-width:86px}
+.admin-stats .stat strong{font-size:28px}
+.admin-action-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
+.admin-action{display:flex;flex-direction:column;gap:6px;padding:18px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:var(--shadow);transition:.18s ease}
+.admin-action:hover{transform:translateY(-2px);border-color:#a8d2ce}
+.admin-action>span{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:#e8f6f4;color:var(--brand);font-weight:900;font-size:18px}
+.admin-action b{font-size:15px}.admin-action small{color:var(--muted);font-size:11px}
+.task-form-card{margin:0 auto}
+.form-grid{gap:14px}
+.upload-note{font-size:12px;color:var(--muted);background:var(--soft);padding:11px 13px;border-radius:10px;margin:-2px 0 15px}
+.submission-list{display:grid;gap:14px}.submission-card{display:grid;grid-template-columns:1fr 230px;gap:20px;padding:18px;border:1px solid var(--line);border-radius:17px;background:#fff;box-shadow:var(--shadow)}
+.submission-platform{font-weight:800;font-size:16px;margin-bottom:8px}.submission-worker{display:flex;flex-direction:column;gap:2px;margin-bottom:9px}.submission-worker span{font-size:12px;color:var(--muted)}.proof-text{color:var(--muted);font-size:13px;white-space:pre-wrap}
+.proof-panel{display:flex;flex-direction:column;gap:10px}.proof-image{display:block;width:100%;height:150px;object-fit:cover;border-radius:12px;border:1px solid var(--line);background:#f5f8f8}.proof-empty{height:150px;display:grid;place-items:center;border:1px dashed #cdd9d7;border-radius:12px;color:var(--muted);font-size:12px;background:#fafcfc}
+.compact{margin-top:0;gap:7px}.compact form{display:inline-flex}
+.profile-menu{padding:7px;margin-bottom:20px}.profile-menu-item{display:flex;align-items:center;gap:12px;padding:13px 9px;border-bottom:1px solid var(--line)}.profile-menu-item:last-child{border-bottom:0}.profile-menu-item>div{flex:1;display:flex;flex-direction:column}.profile-menu-item small{color:var(--muted);font-size:11px}.menu-icon{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-weight:900}.menu-icon.blue{background:#e8f1ff;color:#2563eb}.logout-item b{color:#2563eb}
+.task-admin-list{display:grid;gap:13px}.task-admin-card{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;padding:18px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:var(--shadow)}.task-admin-card h3{margin:8px 0 4px}.task-admin-card p{margin:0 0 10px;color:var(--muted);font-size:13px}.task-meta{display:flex;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:11px}.task-meta span:first-child{font-weight:800;color:var(--brand)}
+.admin-table small{display:block;color:var(--muted);font-size:10px;margin-top:2px}
+
+@media(max-width:900px){.admin-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){
+  .container{padding:24px 16px 94px}.topbar{padding:9px 16px}.brand{font-size:17px}.bottom-nav a{min-width:78px}
+  .submission-card{grid-template-columns:1fr}.proof-image,.proof-empty{height:210px}.task-admin-card{flex-direction:column}.task-admin-card>.btn,.task-admin-card>form{width:100%}.task-admin-card>form .btn{width:100%}
+  .admin-action-grid{grid-template-columns:1fr 1fr}.admin-action{padding:14px}.admin-action small{display:none}
+}

@@ -1303,3 +1303,6 @@ footer{
 .bottom-nav a.active{color:var(--brand);background:var(--soft)}
 @media (min-width:851px){.bottom-nav{max-width:520px;left:50%;right:auto;transform:translateX(-50%);border:1px solid var(--line);border-bottom:0;border-radius:16px 16px 0 0}}
 @media (max-width:600px){.referral-box{align-items:flex-start;flex-direction:column}.referral-box strong{font-size:23px}.bottom-nav a{min-width:58px}}
+
+/* TASKORA WORK current UI revision */
+body{padding-bottom:78px}.topbar nav a:not(.btn){display:none!important}.topbar{padding-left:4%;padding-right:4%}.topbar nav{margin-left:auto}.notice.error{background:#fff0ee;color:#9b1c13;border:1px solid #ffd0cb}.notice.success{background:#edf9f2;color:#166534;border:1px solid #ccebd8}.status{display:inline-block;padding:4px 8px;border-radius:999px;background:var(--soft);color:var(--brand);font-size:11px;font-weight:800}.form-card textarea{width:100%;resize:vertical}

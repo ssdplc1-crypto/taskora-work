@@ -1,6 +1,52 @@
 {% extends "base.html" %}
 {% block title %}Admin Tasks — TASKORA WORK{% endblock %}
 {% block content %}
-<div class="page-head"><div><span class="eyebrow">ADMIN · TASKS</span><h1>Task Manager</h1><p class="muted">Create platform-specific tasks and manage existing campaigns.</p></div><a class="btn" href="{{ url_for('admin_new_task') }}">＋ Create Task</a></div>
-<div class="task-admin-list">{% for t in tasks %}<article class="task-admin-card"><div><span class="pill">{{t.category}}</span><h3>{{t.title}}</h3><p>{{t.description}}</p><div class="task-meta"><span>₦{{"{:,}".format(t.reward)}}</span><span>{{t.slots}} slots</span><span>{{t.submission_count or 0}} submissions</span><span>{{t.status}}</span></div></div><form method="post" action="{{url_for('admin_delete_task',task_id=t.id)}}"><button class="btn danger small">Delete</button></form></article>{% else %}<div class="empty">No tasks created yet.</div>{% endfor %}</div>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">ADMIN · TASKS</span>
+    <h1>Task Manager</h1>
+    <p class="muted">Create, review and manage all platform tasks.</p>
+  </div>
+  <a class="btn" href="{{ url_for('admin_new_task') }}">＋ Create Task</a>
+</div>
+
+<div class="task-list admin-task-list">
+{% for t in tasks %}
+<article class="task-row admin-task-row">
+  <div class="task-platform-icon">
+    {% if 'WhatsApp' in t.category %}📱
+    {% elif 'X' in t.category or 'Twitter' in t.category %}𝕏
+    {% elif 'YouTube' in t.category %}▶
+    {% elif 'Telegram' in t.category %}✈
+    {% elif 'Facebook' in t.category %}f
+    {% elif 'Instagram' in t.category %}◎
+    {% elif 'TikTok' in t.category %}♪
+    {% elif 'Website' in t.category %}🌐
+    {% else %}✓{% endif %}
+  </div>
+
+  <div class="task-row-info">
+    <div class="task-row-top">
+      <span class="pill">{{ t.category }}</span>
+      <span class="task-status">{{ t.status|title }}</span>
+    </div>
+    <h3>{{ t.title }}</h3>
+    <p>{{ t.description }}</p>
+  </div>
+
+  <div class="task-row-meta">
+    <div><span>Reward</span><strong>₦{{ "{:,}".format(t.reward) }}</strong></div>
+    <div><span>Slots</span><strong>{{ t.slots }}</strong></div>
+    <div><span>Submissions</span><strong>{{ t.submission_count or 0 }}</strong></div>
+  </div>
+
+  <form class="task-row-delete" method="post" action="{{ url_for('admin_delete_task',task_id=t.id) }}"
+        onsubmit="return confirm('Delete this task?');">
+    <button class="btn danger small" type="submit">Delete</button>
+  </form>
+</article>
+{% else %}
+<div class="empty">No tasks created yet.</div>
+{% endfor %}
+</div>
 {% endblock %}

@@ -5,7 +5,7 @@
 <div class="stats"><div class="stat"><span>Available</span><strong>₦{{ "{:,}".format(balance) }}</strong></div><div class="stat"><span>Pending</span><strong>₦{{ "{:,}".format(pending) }}</strong></div><div class="stat"><span>Minimum</span><strong>₦{{ "{:,}".format(min_withdrawal) }}</strong></div></div>
 <div class="grid two">
 <section class="form-card">
-<h2>Weekly withdrawal</h2><p>Withdrawal requests open every Friday. Minimum is ₦5,000.</p>
+<h2>Weekly withdrawal</h2><p>Withdrawal requests open every Friday. Minimum is ₦2,000.</p>
 <form method="post" action="{{ url_for('withdraw') }}">
 <label>Amount<input type="number" name="amount" min="{{ min_withdrawal }}" step="1" required></label>
 <label>Bank account<select name="bank_id" required><option value="">Select account</option>{% for b in banks %}<option value="{{ b.id }}">{{ b.bank_name }} · {{ b.account_number }}{% if b.account_name %} · {{ b.account_name }}{% endif %}</option>{% endfor %}</select></label>

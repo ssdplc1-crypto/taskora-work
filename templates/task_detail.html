@@ -1,1 +1,18 @@
-{% extends "base.html" %}{% block title %}{{ task.title }} — TASKORA WORK{% endblock %}{% block content %}<div class="detail-main card"><span class="eyebrow">{{ task.category }}</span><h1>{{ task.title }}</h1><p class="lead">{{ task.description }}</p><div class="metric"><span>Reward</span><strong>₦{{ "{:,}".format(task.reward) }}</strong></div><div class="metric"><span>Slots</span><strong>{{ task.slots }}</strong></div>{% if task.task_link %}<p><a class="btn ghost" href="{{ task.task_link }}" target="_blank" rel="noopener">Open task link</a></p>{% endif %}{% if already %}<div class="notice">You already submitted this task.</div>{% elif user.activated %}<form method="post" action="{{ url_for('submit_task',task_id=task.id) }}"><label>Proof / submission<textarea name="proof" rows="6" required></textarea></label><button class="btn full">Submit task</button></form>{% else %}<a class="btn full" href="{{ url_for('activate') }}">Activate ₦3,000</a>{% endif %}</div>{% endblock %}
+{% extends "base.html" %}
+{% block title %}{{ task.title }} — TASKORA WORK{% endblock %}
+{% block content %}
+<div class="detail-main card">
+  <span class="eyebrow">{{ task.category }}</span><h1>{{ task.title }}</h1><p class="lead">{{ task.description }}</p>
+  <div class="metric"><span>Reward</span><strong>₦{{ "{:,}".format(task.reward) }}</strong></div><div class="metric"><span>Slots</span><strong>{{ task.slots }}</strong></div>
+  {% if task.task_link %}<p><a class="btn ghost" href="{{ task.task_link }}" target="_blank" rel="noopener">Open {{ task.category }} task</a></p>{% endif %}
+  {% if already %}<div class="notice">You already submitted this task.</div>
+  {% elif user.activated %}
+  <form method="post" action="{{ url_for('submit_task',task_id=task.id) }}" enctype="multipart/form-data">
+    <label>Proof / Submission details<textarea name="proof" rows="6" placeholder="Tell the admin what you completed and any required details..." required></textarea></label>
+    <label>Upload screenshot proof <span class="muted">(required)</span><input type="file" name="proof_file" accept="image/png,image/jpeg,image/webp" required></label>
+    <div class="upload-note">Use a clear screenshot that shows the completed task. The screenshot will be visible to the admin during review.</div>
+    <button class="btn full" type="submit">Submit Task & Proof</button>
+  </form>
+  {% else %}<a class="btn full" href="{{ url_for('activate') }}">Activate ₦{{ "{:,}".format(activation_fee) }}</a>{% endif %}
+</div>
+{% endblock %}

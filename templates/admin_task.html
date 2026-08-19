@@ -1,1 +1,21 @@
-{% extends "base.html" %}{% block title %}Create Task — TASKORA WORK{% endblock %}{% block content %}<div class="form-card narrow"><span class="eyebrow">ADMIN · TASKS</span><h1>Create Task</h1><form method="post"><label>Title<input name="title" required></label><label>Category<input name="category" required></label><label>Task link<input name="task_link" type="url" required></label><label>Description<textarea name="description" rows="7" required></textarea></label><label>Reward<input name="reward" type="number" min="1" required></label><label>Slots<input name="slots" type="number" min="1" value="1" required></label><label>Deadline<input name="deadline"></label><label>Difficulty<select name="difficulty"><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></label><button class="btn full">Create Task</button></form></div>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Create Task — TASKORA WORK{% endblock %}
+{% block content %}
+<div class="form-card narrow task-form-card">
+  <span class="eyebrow">ADMIN · TASKS</span><h1>Create Task</h1>
+  <p class="muted">Create a clear task with its platform, link, instructions, reward and available slots.</p>
+  <form method="post">
+    <label>Task title<input name="title" placeholder="e.g. Join TASKORA WhatsApp Community" required></label>
+    <label>Platform / Category
+      <select name="category" required>
+        <option value="">Select platform</option><option>WhatsApp</option><option>X / Twitter</option><option>YouTube</option><option>Telegram</option><option>Facebook</option><option>Instagram</option><option>TikTok</option><option>Website</option><option>Other</option>
+      </select>
+    </label>
+    <label>Task link<input name="task_link" type="url" placeholder="https://..." required></label>
+    <label>Description / Instructions<textarea name="description" rows="9" placeholder="Write the exact steps the worker must complete..." required></textarea></label>
+    <div class="grid two form-grid"><label>Reward (₦)<input name="reward" type="number" min="1" placeholder="500" required></label><label>Slots<input name="slots" type="number" min="1" value="1" required></label></div>
+    <div class="grid two form-grid"><label>Deadline<input name="deadline" type="datetime-local"></label><label>Difficulty<select name="difficulty"><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></label></div>
+    <button class="btn full" type="submit">Create Task</button>
+  </form>
+</div>
+{% endblock %}

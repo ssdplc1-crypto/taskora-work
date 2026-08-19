@@ -1,1 +1,18 @@
-{% extends "base.html" %}{% block title %}Admin Dashboard — TASKORA WORK{% endblock %}{% block content %}<div class="page-head"><div><span class="eyebrow">ADMIN</span><h1>Control center</h1></div></div><div class="grid three">{% for k,v in stats.items() %}<div class="stat"><span>{{ k|replace('_',' ')|title }}</span><strong>{{ v }}</strong></div>{% endfor %}</div><section class="section"><div class="actions"><a class="btn" href="{{ url_for('admin_tasks') }}">Tasks</a><a class="btn" href="{{ url_for('admin_submissions') }}">Submissions</a><a class="btn" href="{{ url_for('admin_withdrawals') }}">Withdrawals</a><a class="btn" href="{{ url_for('admin_users') }}">Users</a><a class="btn" href="{{ url_for('admin_ai') }}">AI</a></div></section>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Admin Dashboard — TASKORA WORK{% endblock %}
+{% block content %}
+<div class="page-head"><div><span class="eyebrow">ADMIN CONTROL CENTER</span><h1>Dashboard</h1><p class="muted">Manage tasks, submissions, withdrawals, users and AI from one place.</p></div></div>
+<div class="grid three admin-stats">
+{% for k,v in stats.items() %}<div class="stat"><span>{{ k|replace('_',' ')|title }}</span><strong>{{ v }}</strong></div>{% endfor %}
+</div>
+<section class="section">
+  <div class="section-head"><span class="eyebrow">MANAGEMENT</span><h2>Quick actions</h2></div>
+  <div class="admin-action-grid">
+    <a class="admin-action" href="{{ url_for('admin_tasks') }}"><span>✓</span><b>Tasks</b><small>Create & manage tasks</small></a>
+    <a class="admin-action" href="{{ url_for('admin_submissions') }}"><span>▣</span><b>Submissions</b><small>Review proof screenshots</small></a>
+    <a class="admin-action" href="{{ url_for('admin_withdrawals') }}"><span>₦</span><b>Withdrawals</b><small>Process payout requests</small></a>
+    <a class="admin-action" href="{{ url_for('admin_users') }}"><span>●</span><b>Users</b><small>Manage worker accounts</small></a>
+    <a class="admin-action" href="{{ url_for('admin_ai') }}"><span>✦</span><b>AI</b><small>AI integration</small></a>
+  </div>
+</section>
+{% endblock %}

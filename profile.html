@@ -1,18 +1,149 @@
 {% extends "base.html" %}
+
 {% block title %}Profile — TASKORA WORK{% endblock %}
+
 {% block content %}
-<div class="page-head"><div><span class="eyebrow">PROFILE</span><h1>{{ user.full_name }}</h1><p>{{ user.email }} · {{ user.phone }}</p></div></div>
-<div class="form-card narrow">
-<h2>Add bank account</h2>
-<p class="muted">Use a bank account owned by you. Verify the account name before requesting withdrawal.</p>
-<form method="post">
-<label>Bank code<input name="bank_code" placeholder="e.g. 044" required></label>
-<label>Bank name<input name="bank_name" placeholder="e.g. Access Bank" required></label>
-<label>Account number<input name="account_number" inputmode="numeric" maxlength="10" required></label>
-<label>Account name<input name="account_name" placeholder="Name returned by bank verification"></label>
-<button class="btn" type="submit">Save bank account</button>
-</form>
+
+<div class="page-head">
+    <div>
+        <span class="eyebrow">PROFILE</span>
+        <h1>{{ user.full_name or "Your Profile" }}</h1>
+        <p>
+            {{ user.email or "No email" }}
+            {% if user.phone %}
+                · {{ user.phone }}
+            {% endif %}
+        </p>
+    </div>
 </div>
-<section class="section"><div class="section-head"><span class="eyebrow">BANK ACCOUNTS</span><h2>Saved accounts</h2></div>
-<div class="grid two">{% for b in banks %}<div class="card"><h3>{{ b.bank_name }}</h3><p>****{{ b.account_number[-4:] }}</p><p>{{ b.account_name or "Name not verified" }}</p><span class="status">{{ "Verified" if b.is_verified else "Pending verification" }}</span></div>{% else %}<div class="empty">No bank accounts saved.</div>{% endfor %}</div></section>
+
+<div class="form-card narrow">
+
+    <h2>Add bank account</h2>
+
+    <p class="muted">
+        Use a bank account owned by you. Make sure the account details are correct
+        before requesting a withdrawal.
+    </p>
+
+<div style="margin-top:20px;">
+    <a class="btn ghost" href="{{ url_for('change_password') }}">
+        Change Password
+    </a>
+</div>
+    
+    <form method="post" action="{{ url_for('profile') }}">
+
+        <label>
+            Bank code
+            <input
+                type="text"
+                name="bank_code"
+                placeholder="e.g. 044"
+                maxlength="10"
+                autocomplete="off"
+                required
+            >
+        </label>
+
+        <label>
+            Bank name
+            <input
+                type="text"
+                name="bank_name"
+                placeholder="e.g. Access Bank"
+                autocomplete="organization"
+                required
+            >
+        </label>
+
+        <label>
+            Account number
+            <input
+                type="text"
+                name="account_number"
+                placeholder="10-digit account number"
+                inputmode="numeric"
+                pattern="[0-9]{10}"
+                maxlength="10"
+                minlength="10"
+                autocomplete="off"
+                required
+            >
+        </label>
+
+        <label>
+            Account name
+            <input
+                type="text"
+                name="account_name"
+                placeholder="Name returned by bank verification"
+                autocomplete="name"
+            >
+        </label>
+
+        <button class="btn" type="submit">
+            Save bank account
+        </button>
+
+    </form>
+
+</div>
+
+
+<section class="section">
+
+    <div class="section-head">
+        <span class="eyebrow">BANK ACCOUNTS</span>
+        <h2>Saved accounts</h2>
+    </div>
+
+    <div class="grid two">
+
+        {% for b in banks %}
+
+        <div class="card">
+
+            <h3>
+                {{ b.bank_name or "Bank Account" }}
+            </h3>
+
+            {% set account_number = b.account_number|string %}
+
+            <p>
+                {% if account_number|length >= 4 %}
+                    ****{{ account_number[-4:] }}
+                {% else %}
+                    ****
+                {% endif %}
+            </p>
+
+            <p>
+                {{ b.account_name or "Name not verified" }}
+            </p>
+
+            {% if b.is_verified %}
+                <span class="status">
+                    Verified
+                </span>
+            {% else %}
+                <span class="status">
+                    Pending verification
+                </span>
+            {% endif %}
+
+        </div>
+
+        {% else %}
+
+        <div class="empty">
+            No bank accounts saved yet.
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+</section>
+
 {% endblock %}

@@ -1,5 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — TASKORA WORK{% endblock %}
+{% block title %}Dashboard — TASKORA WORK<nav class="bottom-nav" aria-label="Dashboard navigation">
+<a class="active" href="{{ url_for('dashboard') }}"><span>⌂</span>Home</a>
+<a href="{{ url_for('tasks') }}"><span>✓</span>Tasks</a>
+<a href="{{ url_for('wallet') }}"><span>₦</span>Wallet</a>
+<a href="{{ url_for('profile') }}"><span>◉</span>Profile</a>
+</nav>
+{% endblock %}
 {% block content %}
 <div class="page-head"><div><span class="eyebrow">WORKER DASHBOARD</span><h1>Hello, {{ user.full_name.split()[0] }} 👋</h1></div>{% if not user.activated %}<a class="btn" href="{{ url_for('activate') }}">Activate ₦3,000</a>{% endif %}</div>
 {% if not user.activated %}
@@ -20,9 +26,20 @@
 </a>
 {% else %}<div class="empty">No open tasks yet.</div>{% endfor %}
 </div></section>
+<section class="section referral-card">
+<div class="section-head"><span class="eyebrow">REFER & EARN</span><h2>Your referral code</h2></div>
+<div class="referral-box"><strong>{{ user.referral_code or "—" }}</strong><span>Earn ₦500 when someone you refer completes successful ₦3,000 activation.</span></div>
+<div class="referral-link">Share: {{ request.host_url }}r/{{ user.referral_code }}</div>
+</section>
 <section class="section">
 <div class="section-head"><span class="eyebrow">RECENT ACTIVITY</span><h2>Your submissions</h2></div>
 <div class="table-wrap"><table><tr><th>Task</th><th>Status</th><th>Date</th></tr>
 {% for s in submissions %}<tr><td>{{ s.title }}</td><td><span class="status {{ s.status }}">{{ s.status }}</span></td><td>{{ s.submitted_at[:10] }}</td></tr>{% else %}<tr><td colspan="3">No submissions yet.</td></tr>{% endfor %}
 </table></div></section>
+<nav class="bottom-nav" aria-label="Dashboard navigation">
+<a class="active" href="{{ url_for('dashboard') }}"><span>⌂</span>Home</a>
+<a href="{{ url_for('tasks') }}"><span>✓</span>Tasks</a>
+<a href="{{ url_for('wallet') }}"><span>₦</span>Wallet</a>
+<a href="{{ url_for('profile') }}"><span>◉</span>Profile</a>
+</nav>
 {% endblock %}

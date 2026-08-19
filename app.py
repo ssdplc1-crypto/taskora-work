@@ -559,12 +559,23 @@ def dashboard():
         SELECT s.*, t.title FROM submissions s JOIN tasks t ON t.id=s.task_id
         WHERE s.user_id=? ORDER BY s.id DESC LIMIT 5
     """, (u["id"],)).fetchall()
+    referrals = conn.execute("""
+        SELECT id, full_name, email, activated, created_at
+        FROM users
+        WHERE referred_by_user_id=? AND role='worker'
+        ORDER BY id DESC
+    """, (u["id"],)).fetchall()
+    referral_approved = sum(1 for r in referrals if r["activated"])
+    referral_pending = len(referrals) - referral_approved
     conn.close()
     return render_template(
         "dashboard.html",
         user=u,
         tasks=tasks,
         submissions=submissions,
+        referrals=referrals,
+        referral_approved=referral_approved,
+        referral_pending=referral_pending,
         balance=available_balance(u["id"]),
         pending=pending_balance(u["id"])
     )
@@ -835,6 +846,7 @@ def activation_callback():
                     now(),
                 ),
             )
+            reward_referrer_for_activation(conn, u["id"])
             conn.commit()
         finally:
             conn.close()
@@ -972,6 +984,7 @@ def flutterwave_webhook():
                                 now(),
                             ),
                         )
+                        reward_referrer_for_activation(conn, user["id"])
 
             conn.commit()
         finally:
@@ -1781,14 +1794,11 @@ def admin_toggle_activation(user_id):
         conn.close()
         flash("Worker not found.", "error")
         return redirect(url_for("admin_users"))
-    if user["activated"]:
-        conn.close()
-        flash("This worker is permanently ACTIVE after successful ₦3,000 activation. Admin cannot deactivate or revoke it.", "error")
-        return redirect(url_for("admin_users"))
-    conn.execute("UPDATE users SET activated=1 WHERE id=?", (user_id,))
-    conn.commit()
     conn.close()
-    flash("Worker activation status updated.", "success")
+    if user["activated"]:
+        flash("This worker is permanently ACTIVE after successful ₦3,000 activation. Admin cannot deactivate or revoke it.", "error")
+    else:
+        flash("Manual activation is disabled. Worker activation must be confirmed from a successful ₦3,000 Flutterwave payment.", "error")
     return redirect(url_for("admin_users"))
 
 

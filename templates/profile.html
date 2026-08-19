@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}Profile — TASKORA WORK{% endblock %}
+{% block title %}Profile — TASKORA WORK<section class="section">
+  <div class="section-head"><span class="eyebrow">ACCOUNT</span><h2>Support & policies</h2></div>
+  <div class="card"><div class="footer-links" style="justify-content:flex-start">
+    <a href="{{ url_for('support') }}">Support</a><a href="{{ url_for('privacy') }}">Privacy Policy</a>
+    <a href="{{ url_for('terms') }}">Terms & Conditions</a><a href="{{ url_for('logout') }}">Logout</a>
+  </div></div>
+</section>
+{% endblock %}
 
 {% block content %}
 
@@ -146,4 +153,11 @@
 
 </section>
 
+<section class="section">
+  <div class="section-head"><span class="eyebrow">ACCOUNT</span><h2>Support & policies</h2></div>
+  <div class="card"><div class="footer-links" style="justify-content:flex-start">
+    <a href="{{ url_for('support') }}">Support</a><a href="{{ url_for('privacy') }}">Privacy Policy</a>
+    <a href="{{ url_for('terms') }}">Terms & Conditions</a><a href="{{ url_for('logout') }}">Logout</a>
+  </div></div>
+</section>
 {% endblock %}

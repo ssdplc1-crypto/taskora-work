@@ -38,9 +38,9 @@ app.config["SESSION_COOKIE_SECURE"] = os.environ.get("COOKIE_SECURE", "0") == "1
 FLW_SECRET_KEY = os.environ.get("FLW_SECRET_KEY", "")
 FLW_WEBHOOK_HASH = os.environ.get("FLW_WEBHOOK_HASH", "")
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:5000").rstrip("/")
-ACTIVATION_FEE = 3000
-MIN_WITHDRAWAL = 2000
-REFERRAL_REWARD = 500
+ACTIVATION_FEE = int(os.environ.get("ACTIVATION_AMOUNT", "3000"))
+MIN_WITHDRAWAL = int(os.environ.get("MINIMUM_WITHDRAWAL", "2000"))
+REFERRAL_REWARD = int(os.environ.get("REFERRAL_REWARD", "500"))
 REFERRAL_CODE_LENGTH = 8
 CURRENCY = "NGN"
 LAGOS_TZ = ZoneInfo("Africa/Lagos")
@@ -1329,19 +1329,14 @@ def admin_dashboard():
         "users": conn.execute("SELECT COUNT(*) FROM users WHERE role='worker'").fetchone()[0],
         "activated": conn.execute("SELECT COUNT(*) FROM users WHERE role='worker' AND activated=1").fetchone()[0],
         "tasks": conn.execute("SELECT COUNT(*) FROM tasks").fetchone()[0],
-        "submissions": conn.execute("SELECT COUNT(*) FROM submissions WHERE status='pending'").fetchone()[0],
-        "withdrawals": conn.execute("SELECT COUNT(*) FROM withdrawals WHERE status='pending'").fetchone()[0],
-        "activation_revenue": conn.execute(
-            "SELECT COALESCE(SUM(amount),0) FROM payment_events WHERE event_type='activation_verified'"
-        ).fetchone()[0],
+        "pending_submissions": conn.execute("SELECT COUNT(*) FROM submissions WHERE status='pending'").fetchone()[0],
+        "pending_withdrawals": conn.execute("SELECT COUNT(*) FROM withdrawals WHERE status='pending'").fetchone()[0],
         "paid_withdrawals": conn.execute("SELECT COUNT(*) FROM withdrawals WHERE status='paid'").fetchone()[0],
-        "total_earnings": conn.execute("SELECT COALESCE(SUM(amount),0) FROM ledger WHERE kind='earning' AND status='available'").fetchone()[0],
     }
     recent_withdrawals = conn.execute("""
-        SELECT w.*, u.full_name, u.email, b.bank_name,b.account_number
+        SELECT w.id, w.amount, w.net_amount, w.status, w.requested_at, u.full_name, u.email
         FROM withdrawals w
         JOIN users u ON u.id=w.user_id
-        JOIN bank_accounts b ON b.id=w.bank_account_id
         ORDER BY w.id DESC LIMIT 20
     """).fetchall()
     conn.close()

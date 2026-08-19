@@ -39,7 +39,9 @@ FLW_SECRET_KEY = os.environ.get("FLW_SECRET_KEY", "")
 FLW_WEBHOOK_HASH = os.environ.get("FLW_WEBHOOK_HASH", "")
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:5000").rstrip("/")
 ACTIVATION_FEE = 3000
-MIN_WITHDRAWAL = 5000
+MIN_WITHDRAWAL = 2000
+REFERRAL_REWARD = 500
+REFERRAL_CODE_LENGTH = 8
 CURRENCY = "NGN"
 LAGOS_TZ = ZoneInfo("Africa/Lagos")
 FLUTTERWAVE_PAYMENT_LINK = os.environ.get(
@@ -142,6 +144,8 @@ def init_db():
             activated INTEGER NOT NULL DEFAULT 0,
             activation_tx_ref TEXT,
             activation_transaction_id TEXT,
+            referral_code TEXT UNIQUE,
+            referred_by_user_id BIGINT REFERENCES users(id),
             created_at TEXT NOT NULL
         );
 
@@ -208,7 +212,9 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT, full_name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, phone TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'worker', activated INTEGER NOT NULL DEFAULT 0,
-            activation_tx_ref TEXT, activation_transaction_id TEXT, created_at TEXT NOT NULL
+            activation_tx_ref TEXT, activation_transaction_id TEXT,
+            referral_code TEXT UNIQUE, referred_by_user_id INTEGER,
+            created_at TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS bank_accounts (
             id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, bank_code TEXT NOT NULL, bank_name TEXT NOT NULL,
@@ -278,6 +284,30 @@ def init_db():
             ("TASKORA Admin", "admin@taskora.local", "0000000000",
              generate_password_hash(os.environ.get("ADMIN_PASSWORD", "ChangeMe123!")), "admin", 1, now())
         )
+    # Referral migrations: preserve existing users and give each a stable code.
+    if conn.is_postgres:
+        conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT")
+        conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by_user_id BIGINT")
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code)")
+    else:
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
+        if "referral_code" not in columns:
+            conn.execute("ALTER TABLE users ADD COLUMN referral_code TEXT")
+        if "referred_by_user_id" not in columns:
+            conn.execute("ALTER TABLE users ADD COLUMN referred_by_user_id INTEGER")
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code)")
+
+    def _new_referral_code():
+        alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+        while True:
+            code = "".join(secrets.choice(alphabet) for _ in range(REFERRAL_CODE_LENGTH))
+            if not conn.execute("SELECT 1 FROM users WHERE referral_code=?", (code,)).fetchone():
+                return code
+
+    existing_users = conn.execute("SELECT id FROM users WHERE referral_code IS NULL OR referral_code=''").fetchall()
+    for row in existing_users:
+        conn.execute("UPDATE users SET referral_code=? WHERE id=?", (_new_referral_code(), row["id"]))
+
     # Backward-compatible migrations for existing databases.
     # These are intentionally idempotent so Render/PostgreSQL and local SQLite
     # databases can both be upgraded without losing existing users or money.
@@ -419,6 +449,7 @@ def inject_globals():
         "current_user": current_user(),
         "activation_fee": ACTIVATION_FEE,
         "min_withdrawal": MIN_WITHDRAWAL,
+        "referral_reward": REFERRAL_REWARD,
     }
 
 
@@ -432,6 +463,21 @@ def index():
     return render_template("index.html", tasks=tasks)
 
 
+@app.route("/r/<referral_code>")
+def referral_link(referral_code):
+    code = referral_code.strip().upper()
+    conn = db()
+    referrer = conn.execute(
+        "SELECT id FROM users WHERE referral_code=? AND role='worker' LIMIT 1", (code,)
+    ).fetchone()
+    conn.close()
+    if referrer:
+        session["pending_referral_code"] = code
+        return redirect(url_for("register"))
+    flash("Referral code not found.", "error")
+    return redirect(url_for("register"))
+
+
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -439,18 +485,38 @@ def register():
         email = request.form.get("email", "").strip().lower()
         phone = request.form.get("phone", "").strip()
         password = request.form.get("password", "")
+        referral_code = request.form.get("referral_code", "").strip().upper() or session.get("pending_referral_code", "")
         if len(full_name) < 2 or not email or len(phone) < 7 or len(password) < 8:
             flash("Fill all fields correctly. Password must be at least 8 characters.", "error")
             return render_template("register.html")
         conn = db()
         try:
+            referrer = None
+            if referral_code:
+                referrer = conn.execute(
+                    "SELECT id FROM users WHERE referral_code=? AND role='worker' LIMIT 1",
+                    (referral_code,),
+                ).fetchone()
+                if not referrer:
+                    flash("Invalid referral code. You can leave it blank or enter a valid code.", "error")
+                    return render_template("register.html")
+
+            alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+            code = None
+            while not code:
+                candidate = "".join(secrets.choice(alphabet) for _ in range(REFERRAL_CODE_LENGTH))
+                if not conn.execute("SELECT 1 FROM users WHERE referral_code=?", (candidate,)).fetchone():
+                    code = candidate
+
             conn.execute(
-                "INSERT INTO users(full_name,email,phone,password_hash,created_at) VALUES(?,?,?,?,?)",
-                (full_name, email, phone, generate_password_hash(password), now())
+                "INSERT INTO users(full_name,email,phone,password_hash,referral_code,referred_by_user_id,created_at) VALUES(?,?,?,?,?,?,?)",
+                (full_name, email, phone, generate_password_hash(password), code,
+                 referrer["id"] if referrer else None, now())
             )
             conn.commit()
             user = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
             session["user_id"] = user["id"]
+            session.pop("pending_referral_code", None)
             return redirect(url_for("dashboard"))
         except Exception:
             flash("Email or phone number is already registered.", "error")
@@ -502,6 +568,25 @@ def dashboard():
         balance=available_balance(u["id"]),
         pending=pending_balance(u["id"])
     )
+
+
+def reward_referrer_for_activation(conn, activated_user_id):
+    row = conn.execute(
+        "SELECT referred_by_user_id FROM users WHERE id=? AND role='worker' AND activated=1",
+        (activated_user_id,),
+    ).fetchone()
+    if not row or not row["referred_by_user_id"] or row["referred_by_user_id"] == activated_user_id:
+        return False
+    reference = f"TASKORA-REF-{activated_user_id}"
+    existing = conn.execute("SELECT id FROM ledger WHERE reference=? LIMIT 1", (reference,)).fetchone()
+    if existing:
+        return False
+    conn.execute(
+        "INSERT OR IGNORE INTO ledger(user_id,kind,amount,reference,description,status,created_at) VALUES(?,?,?,?,?,?,?)",
+        (row["referred_by_user_id"], "earning", REFERRAL_REWARD, reference,
+         f"Referral reward: worker #{activated_user_id} activated", "available", now()),
+    )
+    return True
 
 
 @app.route("/activate")
@@ -1696,8 +1781,11 @@ def admin_toggle_activation(user_id):
         conn.close()
         flash("Worker not found.", "error")
         return redirect(url_for("admin_users"))
-    new_value = 0 if user["activated"] else 1
-    conn.execute("UPDATE users SET activated=? WHERE id=?", (new_value, user_id))
+    if user["activated"]:
+        conn.close()
+        flash("This worker is permanently ACTIVE after successful ₦3,000 activation. Admin cannot deactivate or revoke it.", "error")
+        return redirect(url_for("admin_users"))
+    conn.execute("UPDATE users SET activated=1 WHERE id=?", (user_id,))
     conn.commit()
     conn.close()
     flash("Worker activation status updated.", "success")

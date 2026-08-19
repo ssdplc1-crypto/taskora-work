@@ -1,1 +1,60 @@
-{% extends "base.html" %}{% block title %}Tasks — TASKORA WORK{% endblock %}{% block content %}<div class="page-head"><div><span class="eyebrow">TASK MARKETPLACE</span><h1>Available tasks</h1></div></div>{% if not user.activated %}<div class="notice">Activate your account to participate in tasks.</div>{% endif %}<div class="grid two">{% for task in tasks %}<a class="task-card" href="{{ url_for('task_detail',task_id=task.id) }}"><div class="pill">{{ task.category }}</div><h3>{{ task.title }}</h3><p>{{ task.description }}</p><div class="task-bottom"><strong>₦{{ "{:,}".format(task.reward) }}</strong><span>{{ task.slots }} slots</span></div></a>{% else %}<div class="empty">No open tasks yet.</div>{% endfor %}</div>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Tasks — TASKORA WORK{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">TASK MARKETPLACE</span>
+    <h1>Available Tasks</h1>
+    <p class="muted">Choose a task, complete the instructions and submit your proof.</p>
+  </div>
+</div>
+
+{% if not user.activated %}
+<div class="notice">Activate your account to participate in tasks.</div>
+{% endif %}
+
+<div class="task-list">
+{% for task in tasks %}
+<a class="task-row" href="{{ url_for('task_detail',task_id=task.id) }}">
+  <div class="task-platform-icon">
+    {% if 'WhatsApp' in task.category %}📱
+    {% elif 'X' in task.category or 'Twitter' in task.category %}𝕏
+    {% elif 'YouTube' in task.category %}▶
+    {% elif 'Telegram' in task.category %}✈
+    {% elif 'Facebook' in task.category %}f
+    {% elif 'Instagram' in task.category %}◎
+    {% elif 'TikTok' in task.category %}♪
+    {% elif 'Website' in task.category %}🌐
+    {% else %}✓{% endif %}
+  </div>
+
+  <div class="task-row-info">
+    <div class="task-row-top">
+      <span class="pill">{{ task.category }}</span>
+      {% if task.status %}<span class="task-status">{{ task.status|title }}</span>{% endif %}
+    </div>
+    <h3>{{ task.title }}</h3>
+    <p>{{ task.description }}</p>
+  </div>
+
+  <div class="task-row-meta">
+    <div>
+      <span>Reward</span>
+      <strong>₦{{ "{:,}".format(task.reward) }}</strong>
+    </div>
+    <div>
+      <span>Slots</span>
+      <strong>{{ task.slots }}</strong>
+    </div>
+  </div>
+
+  <div class="task-row-action">
+    <span>View Task</span>
+    <b>›</b>
+  </div>
+</a>
+{% else %}
+<div class="empty">No open tasks yet.</div>
+{% endfor %}
+</div>
+{% endblock %}

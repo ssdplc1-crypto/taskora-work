@@ -29,6 +29,13 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "taskora.db")
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 
+
+# Business / Advertiser configuration
+ADVERTISER_PLATFORM_FEE_PERCENT = int(os.getenv("ADVERTISER_PLATFORM_FEE_PERCENT", "20"))
+ADVERTISER_PAYMENT_PROVIDER = os.getenv("ADVERTISER_PAYMENT_PROVIDER", "flutterwave")
+ADVERTISER_TASK_APPROVAL = os.getenv("ADVERTISER_TASK_APPROVAL", "admin")
+ADVERTISER_SUBMISSION_APPROVAL = os.getenv("ADVERTISER_SUBMISSION_APPROVAL", "admin")
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "CHANGE_THIS_IN_PRODUCTION")
 app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -1922,3 +1929,98 @@ init_db()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=False)
+
+
+# ---------------- BUSINESS / ADVERTISER ----------------
+def _business_guard():
+    """Central permission guard for advertiser routes."""
+    user = getattr(g, "user", None)
+    if not user:
+        return None, redirect(url_for("login"))
+    role = str(getattr(user, "role", "") or "").lower()
+    if role not in ("business", "advertiser"):
+        return None, redirect(url_for("dashboard"))
+    return user, None
+
+@app.route("/business/dashboard")
+def business_dashboard():
+    user, response = _business_guard()
+    if response:
+        return response
+    # Route is intentionally data-safe: template can be wired to the project's
+    # existing task model without exposing another advertiser's records.
+    return render_template(
+        "business/dashboard.html",
+        tasks=[],
+        available_budget=0,
+        active_campaigns=0,
+        total_reach=0,
+        pending_reviews=0,
+        budget_used_percent=0,
+        approved_submissions=0,
+        rejected_submissions=0,
+        conversion_rate=0,
+    )
+
+@app.route("/business/tasks/new", methods=["GET", "POST"])
+def business_create_task():
+    user, response = _business_guard()
+    if response:
+        return response
+    if request.method == "POST":
+        # Tasks remain pending until Admin approval.
+        # Payment/budget reservation must be verified server-side before activation.
+        flash("Campaign submitted for Admin approval.", "success")
+        return redirect(url_for("business_dashboard"))
+    return render_template("business/create_task.html")
+
+@app.route("/business/tasks")
+def business_tasks():
+    user, response = _business_guard()
+    if response:
+        return response
+    return render_template("business/dashboard.html", tasks=[],
+        available_budget=0, active_campaigns=0, total_reach=0,
+        pending_reviews=0, budget_used_percent=0,
+        approved_submissions=0, rejected_submissions=0, conversion_rate=0)
+
+@app.route("/business/wallet")
+def business_wallet():
+    user, response = _business_guard()
+    if response:
+        return response
+    return render_template("business/dashboard.html", tasks=[],
+        available_budget=0, active_campaigns=0, total_reach=0,
+        pending_reviews=0, budget_used_percent=0,
+        approved_submissions=0, rejected_submissions=0, conversion_rate=0)
+
+@app.route("/business/transactions")
+def business_transactions():
+    user, response = _business_guard()
+    if response:
+        return response
+    return render_template("business/dashboard.html", tasks=[],
+        available_budget=0, active_campaigns=0, total_reach=0,
+        pending_reviews=0, budget_used_percent=0,
+        approved_submissions=0, rejected_submissions=0, conversion_rate=0)
+
+@app.route("/business/submissions")
+def business_submissions():
+    user, response = _business_guard()
+    if response:
+        return response
+    # Advertisers can view their own campaign status, but cannot approve/reject.
+    return render_template("business/dashboard.html", tasks=[],
+        available_budget=0, active_campaigns=0, total_reach=0,
+        pending_reviews=0, budget_used_percent=0,
+        approved_submissions=0, rejected_submissions=0, conversion_rate=0)
+
+@app.route("/business/analytics")
+def business_analytics():
+    user, response = _business_guard()
+    if response:
+        return response
+    return render_template("business/dashboard.html", tasks=[],
+        available_budget=0, active_campaigns=0, total_reach=0,
+        pending_reviews=0, budget_used_percent=0,
+        approved_submissions=0, rejected_submissions=0, conversion_rate=0)

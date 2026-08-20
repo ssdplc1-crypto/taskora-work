@@ -45,10 +45,6 @@ app.config["SESSION_COOKIE_SECURE"] = os.environ.get("COOKIE_SECURE", "0") == "1
 
 FLW_SECRET_KEY = os.environ.get("FLW_SECRET_KEY", "")
 FLW_WEBHOOK_HASH = os.environ.get("FLW_WEBHOOK_HASH", "")
-FLW_PAYMENT_OPTIONS = os.environ.get(
-    "FLW_PAYMENT_OPTIONS",
-    "card, banktransfer, ussd, account, internetbanking, nqr, enaira, opay",
-)
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:5000").rstrip("/")
 ACTIVATION_FEE = int(os.environ.get("ACTIVATION_AMOUNT", "3000"))
 MIN_WITHDRAWAL = int(os.environ.get("MINIMUM_WITHDRAWAL", "2000"))
@@ -779,16 +775,6 @@ def reward_referrer_for_activation(conn, activated_user_id):
     return True
 
 
-def _public_base_url():
-    # Render forwards the original host/protocol. Prefer explicit BASE_URL when valid.
-    configured = BASE_URL.strip().rstrip("/")
-    if configured and not configured.startswith(("http://localhost", "http://127.0.0.1", "https://localhost", "https://127.0.0.1")):
-        return configured
-    proto = request.headers.get("X-Forwarded-Proto", request.scheme).split(",")[0].strip()
-    host = request.headers.get("X-Forwarded-Host", request.host).split(",")[0].strip()
-    return f"{proto}://{host}".rstrip("/")
-
-
 @app.route("/activate")
 @login_required
 def activate():
@@ -812,14 +798,14 @@ def activate_pay():
         return redirect(url_for("activate"))
 
     tx_ref = f"TASKORA-ACT-{u['id']}-{uuid.uuid4().hex[:16]}"
-    redirect_url = f"{_public_base_url()}/activate/callback"
+    redirect_url = f"{BASE_URL}/activate/callback"
 
     payload = {
         "tx_ref": tx_ref,
         "amount": ACTIVATION_FEE,
         "currency": CURRENCY,
         "redirect_url": redirect_url,
-        "payment_options": "card",
+        "payment_options": "card,banktransfer,ussd",
         "customer": {
             "email": u["email"],
             "name": u["full_name"],
@@ -835,12 +821,9 @@ def activate_pay():
         result = flw_post("/payments", payload)
         checkout_link = str((result.get("data") or {}).get("link") or "").strip()
         if not checkout_link:
-            app.logger.error("Flutterwave activation response missing checkout link: %r", result)
-            raise RuntimeError("Flutterwave did not return a checkout link. Check Render logs for the Flutterwave response.")
-        app.logger.info("Flutterwave activation checkout created: tx_ref=%s", tx_ref)
+            raise RuntimeError("Flutterwave did not return a checkout link.")
     except Exception as e:
-        app.logger.exception("Flutterwave activation checkout failed: tx_ref=%s", tx_ref)
-        flash(f"Activation payment could not start: {e}", "error")
+        flash(str(e), "error")
         return redirect(url_for("activate"))
 
     conn = db()
@@ -2599,8 +2582,7 @@ def business_fund_task(task_id):
             "amount": int(task["total_budget"]),
             "currency": CURRENCY,
             "redirect_url": redirect_url,
-            "payment_options": FLW_PAYMENT_OPTIONS,
-        "bank_transfer_options": {"expires": 3600},
+            "payment_options": "card,banktransfer,ussd",
             "customer": {"email": user["email"], "name": user["full_name"], "phonenumber": user["phone"]},
             "customizations": {"title": "TASKORA WORK Campaign Funding", "description": f"Fund campaign: {task['title']}"},
             "meta": {"taskora_type": "advertiser_campaign", "task_id": task_id, "advertiser_id": user["id"]},
@@ -2729,8 +2711,7 @@ def business_wallet_fund():
         result = flw_post("/payments", {
             "tx_ref": tx_ref, "amount": amount, "currency": CURRENCY,
             "redirect_url": f"{BASE_URL}/business/payment/wallet-callback",
-            "payment_options": FLW_PAYMENT_OPTIONS,
-        "bank_transfer_options": {"expires": 3600},
+            "payment_options": "card,banktransfer,ussd",
             "customer": {"email": user["email"], "name": user["full_name"], "phonenumber": user["phone"]},
             "customizations": {"title": "TASKORA WORK Advertiser Wallet", "description": "Add campaign funds"},
             "meta": {"taskora_type": "advertiser_wallet", "advertiser_id": user["id"]},

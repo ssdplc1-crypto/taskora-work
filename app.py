@@ -703,9 +703,29 @@ def logout():
 def dashboard():
     u = current_user()
     conn = db()
-    tasks = conn.execute(
-        "SELECT * FROM tasks WHERE status='open' ORDER BY id DESC LIMIT 8"
+    all_open_tasks = conn.execute(
+        """
+        SELECT
+            t.*,
+            (t.slots - (
+                SELECT COUNT(*)
+                FROM submissions s
+                WHERE s.task_id=t.id
+                  AND s.status IN ('pending','approved')
+            )) AS remaining_slots
+        FROM tasks t
+        WHERE t.status='open'
+        ORDER BY t.id DESC
+        """
     ).fetchall()
+    tasks = [t for t in all_open_tasks if int(t["remaining_slots"] or 0) > 0][:8]
+    available_task_count = len([t for t in all_open_tasks if int(t["remaining_slots"] or 0) > 0])
+    open_slots = sum(max(0, int(t["remaining_slots"] or 0)) for t in all_open_tasks)
+    highest_reward = max((int(t["reward"] or 0) for t in all_open_tasks if int(t["remaining_slots"] or 0) > 0), default=0)
+    task_value = sum(
+        int(t["reward"] or 0) * max(0, int(t["remaining_slots"] or 0))
+        for t in all_open_tasks
+    )
     submissions = conn.execute("""
         SELECT s.*, t.title FROM submissions s JOIN tasks t ON t.id=s.task_id
         WHERE s.user_id=? ORDER BY s.id DESC LIMIT 5
@@ -728,7 +748,11 @@ def dashboard():
         referral_approved=referral_approved,
         referral_pending=referral_pending,
         balance=available_balance(u["id"]),
-        pending=pending_balance(u["id"])
+        pending=pending_balance(u["id"]),
+        available_task_count=available_task_count,
+        open_slots=open_slots,
+        highest_reward=highest_reward,
+        task_value=task_value,
     )
 
 

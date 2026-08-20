@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Create Campaign — TASKORA WORK{% endblock %}
 {% block content %}
-<div class="business-form-shell"><div class="page-head"><div><span class="eyebrow">ADVERTISER</span><h1>Create Task</h1><p class="muted">Give workers clear instructions and set your campaign budget.</p></div></div>
+<div class="business-form-shell"><div class="page-head"><div><span class="eyebrow">ADVERTISER</span><h1>Create Campaign</h1><p class="muted">Set exactly what one worker earns and how many completed workers you need. Payment is required before Admin can publish the campaign.</p></div></div>
 <form class="business-form" method="post">
 <section class="business-form-card"><h2>Task details</h2><div class="form-grid">
 <label>Task title<input name="title" required placeholder="e.g. Follow our X account"></label>
@@ -9,15 +9,18 @@
 <label class="full">Task link<input name="task_link" type="url" placeholder="https://..."></label>
 <label class="full">Instructions<textarea name="description" rows="5" required placeholder="Explain exactly what the worker must do and what proof is required."></textarea></label>
 </div></section>
-<section class="business-form-card"><h2>Budget & delivery</h2><div class="form-grid">
-<label>Reward per worker (₦)<input name="reward" type="number" min="1" required></label>
-<label>Number of workers<input name="slots" type="number" min="1" required></label>
+<section class="business-form-card"><h2>Worker reward & campaign budget</h2><div class="form-grid">
+<label>Reward per completed worker (₦)<input name="reward" type="number" min="1" required></label>
+<label>Workers needed<input name="slots" type="number" min="1" required></label>
 <label>Deadline<input name="deadline" type="datetime-local"></label>
 <label>Proof required<select name="proof_type"><option>screenshot</option><option>text</option><option>link</option><option>both</option></select></label>
-</div><div class="budget-estimate"><span>Estimated worker budget</span><b id="campaignTotal">₦0</b></div></section>
-<div class="business-form-actions"><a class="btn secondary" href="{{ url_for('business_dashboard') }}">Cancel</a><button class="btn business-primary" type="submit">Create Campaign</button></div>
+</div>
+<div class="business-budget-breakdown"><div><span>Worker rewards</span><b id="workerBudget">₦0</b></div><div><span>TASKORA platform fee ({{ fee_percent }}%)</span><b id="platformFee">₦0</b></div><div class="total"><span>Total you must fund</span><b id="campaignTotal">₦0</b></div></div>
+<p class="muted small-note">The platform fee is charged only as workers are approved. Any unused reserved campaign money is returned to your advertiser wallet when the campaign is closed.</p>
+</section>
+<div class="business-form-actions"><a class="btn secondary" href="{{ url_for('business_dashboard') }}">Cancel</a><button class="btn business-primary" type="submit">Continue to Payment →</button></div>
 </form></div>
 <script>
-(function(){const r=document.querySelector('[name="reward"]'),s=document.querySelector('[name="slots"]'),t=document.getElementById('campaignTotal');function c(){t.textContent='₦'+((Number(r.value)||0)*(Number(s.value)||0)).toLocaleString()}r.addEventListener('input',c);s.addEventListener('input',c)})();
+(function(){const r=document.querySelector('[name="reward"]'),s=document.querySelector('[name="slots"]'),w=document.getElementById('workerBudget'),f=document.getElementById('platformFee'),t=document.getElementById('campaignTotal');const pct={{ fee_percent|tojson }};function c(){const worker=(Number(r.value)||0)*(Number(s.value)||0);const fee=Math.floor(worker*pct/100);w.textContent='₦'+worker.toLocaleString();f.textContent='₦'+fee.toLocaleString();t.textContent='₦'+(worker+fee).toLocaleString()}r.addEventListener('input',c);s.addEventListener('input',c);c()})();
 </script>
 {% endblock %}

@@ -1,16 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Advertiser Register — TASKORA WORK{% endblock %}
 {% block content %}
-<div class="auth">
-  <div class="auth-copy"><span class="eyebrow">TASKORA FOR BUSINESS</span><h1>Reach real workers.</h1><p>Create an advertiser account and publish campaigns for TASKORA workers.</p></div>
-  <form class="form-card" method="post"><h2>Create advertiser account</h2>
-    <label>Business / Brand name<input name="business_name" required autocomplete="organization"></label>
-    <label>Email<input type="email" name="email" required autocomplete="email"></label>
-    <label>Phone number<input name="phone" required autocomplete="tel"></label>
-    <label>Password<input type="password" name="password" minlength="8" required autocomplete="new-password"></label>
-    <button class="btn full business-primary" type="submit">Create Advertiser Account</button>
-    <p class="muted">Already an advertiser? <a href="{{ url_for('business_login') }}">Advertiser Login</a></p>
-    <p class="muted">Want to earn as a worker? <a href="{{ url_for('register') }}">Worker Registration</a></p>
-  </form>
-</div>
+<div class="auth"><div class="auth-copy"><span class="eyebrow">TASKORA FOR BUSINESS</span><h1>Reach real workers.</h1><p>Create an advertiser account. You only pay when you create and fund a campaign. Worker rewards are settled after Admin verifies completed work.</p></div>
+<form class="form-card" method="post"><h2>Create advertiser account</h2><label>Business / Brand name<input name="business_name" required autocomplete="organization"></label><label>Email<input type="email" name="email" required autocomplete="email"></label><label>Phone number<input name="phone" required autocomplete="tel"></label><label>Password<input type="password" name="password" minlength="8" required autocomplete="new-password"></label><button class="btn full business-primary" type="submit">Create Advertiser Account</button><p class="muted">Already registered? <a href="{{ url_for('login') }}">Sign In</a></p><p class="muted">Want to earn as a worker? <a href="{{ url_for('register') }}">Worker Registration</a></p></form></div>
 {% endblock %}

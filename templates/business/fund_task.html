@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Fund Campaign — TASKORA WORK{% endblock %}
+{% block content %}
+<div class="business-form-shell">
+<section class="business-card payment-card"><span class="eyebrow">SECURE CAMPAIGN FUNDING</span><h1>Fund “{{ task.title }}”</h1><p class="muted">The campaign must be funded before TASKORA Admin can approve and publish it to workers.</p>
+<div class="business-budget-breakdown"><div><span>Worker rewards</span><b>₦{{ "{:,.0f}".format(worker_budget) }}</b></div><div><span>TASKORA fee ({{ fee_percent }}%)</span><b>₦{{ "{:,.0f}".format(platform_fee) }}</b></div><div class="total"><span>Total required</span><b>₦{{ "{:,.0f}".format(total_budget) }}</b></div><div><span>Current wallet</span><b>₦{{ "{:,.0f}".format(wallet.balance or 0) }}</b></div></div>
+<div class="payment-method-note"><b>Payment method</b><span>Flutterwave — Card, Bank Transfer or USSD</span></div>
+<form method="post"><button class="btn business-primary full" type="submit">Pay ₦{{ "{:,.0f}".format(total_budget) }} & Fund Campaign</button></form>
+<p class="muted small-note">After successful payment, the money is reserved for this campaign. Admin then reviews the task. If the campaign is not fully completed, unused reserved funds can be returned to your advertiser wallet.</p>
+</section></div>
+{% endblock %}

@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Advertiser Submissions — TASKORA WORK{% endblock %}
 {% block content %}
-<div class="page-head"><div><span class="eyebrow">ADVERTISER</span><h1>Worker Submissions</h1><p class="muted">See worker submissions for your campaigns. TASKORA admin handles final proof approval and worker reward crediting.</p></div><a class="btn business-primary" href="{{ url_for('business_dashboard') }}">Dashboard</a></div>
+<div class="page-head"><div><span class="eyebrow">ADVERTISER</span><h1>Worker Work</h1><p class="muted">See submissions for your campaigns. TASKORA Admin controls final approval/rejection and worker payment.</p></div><a class="btn business-primary" href="{{ url_for('business_dashboard') }}">Dashboard</a></div>
 <div class="task-list">
 {% for s in submissions %}
-<article class="task-row">
-  <div class="task-row-info"><span class="pill">{{ s.category }}</span><h3>{{ s.title }}</h3><p>Worker: {{ s.full_name }} · {{ s.email }}</p></div>
-  <div class="task-row-meta"><div><span>Reward</span><strong>₦{{ "{:,}".format(s.reward or 0) }}</strong></div><div><span>Status</span><strong>{{ s.status|title }}</strong></div></div>
+<article class="task-row submission-business-row">
+  <div class="task-row-info"><span class="pill">{{ s.category }}</span><h3>{{ s.title }}</h3><p>Worker: {{ s.full_name }} · {{ s.email }}</p>{% if s.proof %}<small class="muted">Proof: {{ s.proof[:220] }}</small>{% endif %}</div>
+  <div class="task-row-meta"><div><span>Reward</span><strong>₦{{ "{:,.0f}".format(s.reward or 0) }}</strong></div><div><span>Status</span><strong>{{ s.status|title }}</strong></div></div>
 </article>
 {% else %}<div class="empty">No worker submissions yet.</div>{% endfor %}
 </div>

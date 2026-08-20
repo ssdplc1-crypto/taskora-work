@@ -1,9 +1,0 @@
-{
-  "name": "TASKORA WORK",
-  "short_name": "TASKORA",
-  "start_url": "/dashboard",
-  "display": "standalone",
-  "background_color": "#fbfdfd",
-  "theme_color": "#0f766e",
-  "icons": []
-}

@@ -12,12 +12,8 @@ ADVERTISER_SUBMISSION_APPROVAL=admin
 # Required Render environment variables for real payments
 # FLW_SECRET_KEY=your_flutterwave_secret_key
 # FLW_WEBHOOK_HASH=your_flutterwave_webhook_hash
-# BASE_URL=https://your-taskora-domain.onrender.com
+BASE_URL=https://taskora-work.onrender.com
 
 # Required for AI
 # OPENAI_API_KEY=your_openai_api_key
 # OPENAI_MODEL=gpt-5.6-luna
-
-# Worker activation
-ACTIVATION_AMOUNT=3000
-# Card-only activation is enforced in app.py with payment_options=card

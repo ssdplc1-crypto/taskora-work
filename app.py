@@ -22,6 +22,7 @@ try:
 except ImportError:
     OpenAI = None
 
+from werkzeug.middleware.proxy_fix import ProxyFix
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -39,6 +40,8 @@ ADVERTISER_MIN_FUNDING = int(os.getenv("ADVERTISER_MIN_FUNDING", "100"))
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "CHANGE_THIS_IN_PRODUCTION")
+# Render sits behind a reverse proxy; preserve the public HTTPS host/scheme.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = os.environ.get("COOKIE_SECURE", "0") == "1"
@@ -549,6 +552,28 @@ def pending_balance(user_id):
     return val
 
 
+def public_base_url():
+    """Return the public HTTPS base URL used in provider callbacks.
+
+    BASE_URL is preferred when configured. On Render, if it is missing or
+    accidentally left at localhost, derive the URL from the proxied request.
+    """
+    configured = (os.environ.get("BASE_URL") or "").strip().rstrip("/")
+    if configured and not configured.startswith(("http://localhost", "http://127.0.0.1", "https://localhost", "https://127.0.0.1")):
+        return configured
+    try:
+        root = request.url_root.rstrip("/")
+        if root:
+            return root
+    except Exception:
+        pass
+    return "https://taskora-work.onrender.com"
+
+
+def payment_redirect_url(path):
+    return f"{public_base_url()}{path}"
+
+
 def flw_headers():
     return {
         "Authorization": f"Bearer {FLW_SECRET_KEY}",
@@ -703,29 +728,9 @@ def logout():
 def dashboard():
     u = current_user()
     conn = db()
-    all_open_tasks = conn.execute(
-        """
-        SELECT
-            t.*,
-            (t.slots - (
-                SELECT COUNT(*)
-                FROM submissions s
-                WHERE s.task_id=t.id
-                  AND s.status IN ('pending','approved')
-            )) AS remaining_slots
-        FROM tasks t
-        WHERE t.status='open'
-        ORDER BY t.id DESC
-        """
+    tasks = conn.execute(
+        "SELECT * FROM tasks WHERE status='open' ORDER BY id DESC LIMIT 8"
     ).fetchall()
-    tasks = [t for t in all_open_tasks if int(t["remaining_slots"] or 0) > 0][:8]
-    available_task_count = len([t for t in all_open_tasks if int(t["remaining_slots"] or 0) > 0])
-    open_slots = sum(max(0, int(t["remaining_slots"] or 0)) for t in all_open_tasks)
-    highest_reward = max((int(t["reward"] or 0) for t in all_open_tasks if int(t["remaining_slots"] or 0) > 0), default=0)
-    task_value = sum(
-        int(t["reward"] or 0) * max(0, int(t["remaining_slots"] or 0))
-        for t in all_open_tasks
-    )
     submissions = conn.execute("""
         SELECT s.*, t.title FROM submissions s JOIN tasks t ON t.id=s.task_id
         WHERE s.user_id=? ORDER BY s.id DESC LIMIT 5
@@ -748,11 +753,7 @@ def dashboard():
         referral_approved=referral_approved,
         referral_pending=referral_pending,
         balance=available_balance(u["id"]),
-        pending=pending_balance(u["id"]),
-        available_task_count=available_task_count,
-        open_slots=open_slots,
-        highest_reward=highest_reward,
-        task_value=task_value,
+        pending=pending_balance(u["id"])
     )
 
 
@@ -798,14 +799,14 @@ def activate_pay():
         return redirect(url_for("activate"))
 
     tx_ref = f"TASKORA-ACT-{u['id']}-{uuid.uuid4().hex[:16]}"
-    redirect_url = f"{BASE_URL}/activate/callback"
+    redirect_url = payment_redirect_url("/activate/callback")
 
     payload = {
         "tx_ref": tx_ref,
         "amount": ACTIVATION_FEE,
         "currency": CURRENCY,
         "redirect_url": redirect_url,
-        "payment_options": "card,banktransfer,ussd",
+        "payment_options": "card, banktransfer, ussd",
         "customer": {
             "email": u["email"],
             "name": u["full_name"],
@@ -823,7 +824,8 @@ def activate_pay():
         if not checkout_link:
             raise RuntimeError("Flutterwave did not return a checkout link.")
     except Exception as e:
-        flash(str(e), "error")
+        app.logger.exception("Flutterwave activation checkout creation failed")
+        flash(f"Flutterwave payment could not be started: {e}", "error")
         return redirect(url_for("activate"))
 
     conn = db()
@@ -2582,7 +2584,7 @@ def business_fund_task(task_id):
             "amount": int(task["total_budget"]),
             "currency": CURRENCY,
             "redirect_url": redirect_url,
-            "payment_options": "card,banktransfer,ussd",
+            "payment_options": "card, banktransfer, ussd",
             "customer": {"email": user["email"], "name": user["full_name"], "phonenumber": user["phone"]},
             "customizations": {"title": "TASKORA WORK Campaign Funding", "description": f"Fund campaign: {task['title']}"},
             "meta": {"taskora_type": "advertiser_campaign", "task_id": task_id, "advertiser_id": user["id"]},
@@ -2601,7 +2603,8 @@ def business_fund_task(task_id):
             conn.close()
             return redirect(checkout_link)
         except Exception as e:
-            flash(str(e), "error")
+            app.logger.exception("Flutterwave advertiser campaign checkout creation failed")
+            flash(f"Flutterwave payment could not be started: {e}", "error")
             return redirect(url_for("business_fund_task", task_id=task_id))
 
     worker_budget, platform_fee, total_budget, _ = _campaign_numbers(task["reward"], task["slots"])
@@ -2710,8 +2713,8 @@ def business_wallet_fund():
     try:
         result = flw_post("/payments", {
             "tx_ref": tx_ref, "amount": amount, "currency": CURRENCY,
-            "redirect_url": f"{BASE_URL}/business/payment/wallet-callback",
-            "payment_options": "card,banktransfer,ussd",
+            "redirect_url": payment_redirect_url("/business/payment/wallet-callback"),
+            "payment_options": "card, banktransfer, ussd",
             "customer": {"email": user["email"], "name": user["full_name"], "phonenumber": user["phone"]},
             "customizations": {"title": "TASKORA WORK Advertiser Wallet", "description": "Add campaign funds"},
             "meta": {"taskora_type": "advertiser_wallet", "advertiser_id": user["id"]},
@@ -2724,7 +2727,8 @@ def business_wallet_fund():
         conn.commit(); conn.close()
         return redirect(link)
     except Exception as e:
-        flash(str(e), "error")
+        app.logger.exception("Flutterwave advertiser wallet checkout creation failed")
+        flash(f"Flutterwave payment could not be started: {e}", "error")
         return redirect(url_for("business_wallet"))
 
 

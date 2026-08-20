@@ -39,7 +39,8 @@
 <a class="{% if request.endpoint in ['admin_tasks','admin_new_task'] %}active{% endif %}" href="{{ url_for('admin_tasks') }}"><span>✓</span>Tasks</a>
 <a class="{% if request.endpoint in ['admin_submissions','review_submission'] %}active{% endif %}" href="{{ url_for('admin_submissions') }}"><span>▣</span>Submissions</a>
 <a class="{% if request.endpoint in ['admin_withdrawals','admin_pay_withdrawal','admin_reject_withdrawal'] %}active{% endif %}" href="{{ url_for('admin_withdrawals') }}"><span>₦</span>Withdrawals</a>
-<a class="{% if request.endpoint=='admin_users' %}active{% endif %}" href="{{ url_for('admin_users') }}"><span>●</span>Users</a>
+<a class="{% if request.endpoint=='admin_users' %}active{% endif %}" href="{{ url_for('admin_users') }}"><span>●</span>Workers</a>
+<a class="{% if request.endpoint=='admin_businesses' %}active{% endif %}" href="{{ url_for('admin_businesses') }}"><span>▣</span>Business</a>
 <a class="{% if request.endpoint=='admin_ai' %}active{% endif %}" href="{{ url_for('admin_ai') }}"><span>✦</span>AI</a>
 </nav>
 {% elif current_user and current_user.role in ['advertiser','business'] %}
@@ -58,7 +59,7 @@
 <a class="{% if request.endpoint in ['profile','change_password'] %}active{% endif %}" href="{{ url_for('profile') }}"><span>◉</span>Profile</a>
 </nav>
 {% else %}
-<footer><div class="footer-links"><a href="{{ url_for('account_type') }}">Create Account</a><a href="{{ url_for('business_login') }}">Business Login</a><a href="{{ url_for('support') }}">Support</a><a href="{{ url_for('privacy') }}">Privacy Policy</a><a href="{{ url_for('terms') }}">Terms & Conditions</a></div></footer>
+<footer><div class="footer-links"><a href="{{ url_for('account_type') }}">Create Account</a><a href="{{ url_for('login') }}">Sign In</a><a href="{{ url_for('support') }}">Support</a><a href="{{ url_for('privacy') }}">Privacy Policy</a><a href="{{ url_for('terms') }}">Terms & Conditions</a></div></footer>
 {% endif %}
 <script>
 let deferredInstallPrompt;

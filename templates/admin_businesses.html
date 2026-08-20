@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Admin — Businesses{% endblock %}
+{% block content %}
+<div class="page-head"><div><span class="eyebrow">ADMIN · BUSINESS</span><h1>Advertisers</h1><p class="muted">View advertiser accounts, campaign activity and reserved campaign funds.</p></div></div>
+<div class="task-list">{% for b in businesses %}<article class="task-row admin-task-row"><div class="task-row-info"><span class="pill">ADVERTISER</span><h3>{{ b.full_name }}</h3><p>{{ b.email }} · {{ b.phone }}</p><small class="muted">{{ b.task_count }} campaign(s)</small></div><div class="task-row-meta"><div><span>Available</span><strong>₦{{ "{:,.0f}".format(b.wallet_balance or 0) }}</strong></div><div><span>Reserved</span><strong>₦{{ "{:,.0f}".format(b.reserved_balance or 0) }}</strong></div></div></article>{% else %}<div class="empty">No advertiser accounts yet.</div>{% endfor %}</div>
+{% endblock %}

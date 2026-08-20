@@ -1,18 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Admin Dashboard — TASKORA WORK{% endblock %}
 {% block content %}
-<div class="page-head"><div><span class="eyebrow">ADMIN CONTROL CENTER</span><h1>Dashboard</h1><p class="muted">Manage tasks, submissions, withdrawals, users and AI from one place.</p></div></div>
-<div class="grid three admin-stats">
-{% for k,v in stats.items() %}<div class="stat"><span>{{ k|replace('_',' ')|title }}</span><strong>{{ v }}</strong></div>{% endfor %}
+<div class="business-shell">
+<div class="business-hero"><div><span class="eyebrow">TASKORA CONTROL CENTER</span><h1>Admin Dashboard</h1><p>One place to control workers, advertiser campaigns, payments, submissions and withdrawals.</p></div><span class="role-badge">ADMIN</span></div>
+<div class="business-stats"><div class="business-stat"><span>Workers</span><strong>{{ stats.users }}</strong><small>{{ stats.activated }} active</small></div><div class="business-stat"><span>Advertisers</span><strong>{{ stats.businesses }}</strong><small>Business accounts</small></div><div class="business-stat"><span>Business Tasks Waiting</span><strong>{{ stats.business_pending_tasks }}</strong><small>Need funding/review</small></div><div class="business-stat"><span>Pending Submissions</span><strong>{{ stats.pending_submissions }}</strong><small>Admin action required</small></div><div class="business-stat"><span>Platform Revenue</span><strong>₦{{ "{:,.0f}".format(stats.platform_revenue or 0) }}</strong><small>Earned from completed work</small></div></div>
+<div class="business-grid">
+<section class="business-card"><div class="business-card-head"><div><span class="eyebrow">OPERATIONS</span><h2>Admin Actions</h2></div></div><div class="admin-action-grid"><a class="admin-action" href="{{ url_for('admin_tasks') }}"><span>✓</span><b>Tasks</b><small>Approve, reject and manage campaigns</small></a><a class="admin-action" href="{{ url_for('admin_submissions') }}"><span>▣</span><b>Submissions</b><small>Verify worker proof and release rewards</small></a><a class="admin-action" href="{{ url_for('admin_businesses') }}"><span>▣</span><b>Advertisers</b><small>View business accounts and funds</small></a><a class="admin-action" href="{{ url_for('admin_users') }}"><span>●</span><b>Workers</b><small>Manage worker accounts</small></a><a class="admin-action" href="{{ url_for('admin_withdrawals') }}"><span>₦</span><b>Withdrawals</b><small>Process worker payouts</small></a><a class="admin-action" href="{{ url_for('admin_ai') }}"><span>✦</span><b>AI</b><small>Admin assistant</small></a></div></section>
+<section class="business-card"><span class="eyebrow">MONEY CONTROL</span><h2>Campaign Funds</h2><div class="billing-balance">₦{{ "{:,.0f}".format(stats.reserved_campaign_funds or 0) }}</div><p class="muted">Funds currently reserved for advertiser campaigns. Worker rewards and the proportional platform fee are settled only after Admin approves completed work.</p><a class="btn small" href="{{ url_for('admin_tasks') }}">Review Campaigns →</a></section>
 </div>
-<section class="section">
-  <div class="section-head"><span class="eyebrow">MANAGEMENT</span><h2>Quick actions</h2></div>
-  <div class="admin-action-grid">
-    <a class="admin-action" href="{{ url_for('admin_tasks') }}"><span>✓</span><b>Tasks</b><small>Create & manage tasks</small></a>
-    <a class="admin-action" href="{{ url_for('admin_submissions') }}"><span>▣</span><b>Submissions</b><small>Review proof screenshots</small></a>
-    <a class="admin-action" href="{{ url_for('admin_withdrawals') }}"><span>₦</span><b>Withdrawals</b><small>Process payout requests</small></a>
-    <a class="admin-action" href="{{ url_for('admin_users') }}"><span>●</span><b>Users</b><small>Manage worker accounts</small></a>
-    <a class="admin-action" href="{{ url_for('admin_ai') }}"><span>✦</span><b>AI</b><small>AI integration</small></a>
-  </div>
-</section>
+<section class="business-card business-trust"><div><span class="eyebrow">THE TASKORA FLOW</span><h2>Advertiser → Admin → Worker</h2></div><div class="business-steps"><div><b>01</b><span>Advertiser creates task</span></div><div><b>02</b><span>Advertiser pays total budget</span></div><div><b>03</b><span>Admin reviews & publishes</span></div><div><b>04</b><span>Worker submits; Admin approves</span></div></div></section>
+</div>
 {% endblock %}

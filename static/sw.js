@@ -1,1 +1,0 @@
-const CACHE='taskora-work-v1';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>self.clients.claim());

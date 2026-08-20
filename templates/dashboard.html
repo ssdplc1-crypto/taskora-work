@@ -1,53 +1,114 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — TASKORA WORK<nav class="bottom-nav" aria-label="Dashboard navigation">
-<a class="active" href="{{ url_for('dashboard') }}"><span>⌂</span>Home</a>
-<a href="{{ url_for('tasks') }}"><span>✓</span>Tasks</a>
-<a href="{{ url_for('wallet') }}"><span>₦</span>Wallet</a>
-<a href="{{ url_for('profile') }}"><span>◉</span>Profile</a>
-</nav>
-{% endblock %}
+{% block title %}Worker Dashboard — TASKORA WORK{% endblock %}
 {% block content %}
-<div class="page-head"><div><span class="eyebrow">WORKER DASHBOARD</span><h1>Hello, {{ user.full_name.split()[0] }} 👋</h1></div>{% if not user.activated %}<a class="btn" href="{{ url_for('activate') }}">Activate ₦3,000</a>{% endif %}</div>
+<div class="page-head worker-head">
+  <div>
+    <span class="eyebrow">WORKER DASHBOARD</span>
+    <h1>Hello, {{ user.full_name.split()[0] }} 👋</h1>
+    <p class="muted">Find verified tasks, complete the work and earn from approved submissions.</p>
+  </div>
+  {% if not user.activated %}
+    <a class="btn" href="{{ url_for('activate') }}">Activate ₦3,000</a>
+  {% else %}
+    <span class="worker-active-badge">● ACTIVE WORKER</span>
+  {% endif %}
+</div>
+
 {% if not user.activated %}
-<div class="notice"><strong>Account not activated.</strong> Activate your worker account to apply for tasks and withdraw earnings.</div>
+<div class="notice worker-lock-notice"><strong>🔒 Worker account not activated.</strong> You can see available tasks below, but you must activate your account before opening or submitting any task.</div>
 {% endif %}
-<div class="stats">
-  <div class="stat"><span>Available</span><strong>₦{{ "{:,}".format(balance) }}</strong></div>
-  <div class="stat"><span>Pending</span><strong>₦{{ "{:,}".format(pending) }}</strong></div>
-  <div class="stat"><span>Minimum withdrawal</span><strong>₦{{ "{:,}".format(min_withdrawal) }}</strong></div>
+
+<div class="worker-stat-grid">
+  <div class="worker-stat-card worker-stat-primary">
+    <span>Available Tasks</span>
+    <strong>{{ available_task_count }}</strong>
+    <small>Open campaigns</small>
+  </div>
+  <div class="worker-stat-card">
+    <span>Open Slots</span>
+    <strong>{{ open_slots }}</strong>
+    <small>Workers still needed</small>
+  </div>
+  <div class="worker-stat-card">
+    <span>Highest Reward</span>
+    <strong>₦{{ "{:,}".format(highest_reward) }}</strong>
+    <small>Per completed task</small>
+  </div>
+  <div class="worker-stat-card">
+    <span>Task Value</span>
+    <strong>₦{{ "{:,}".format(task_value) }}</strong>
+    <small>Rewards currently available</small>
+  </div>
 </div>
-<section class="section">
-<div class="section-head"><span class="eyebrow">TASK MARKETPLACE</span><h2>Tasks you can work on</h2></div>
-<div class="grid two">
-{% for task in tasks %}
-<a class="task-card link-card" href="{{ url_for('task_detail', task_id=task.id) }}">
-<div class="pill">{{ task.category }}</div><h3>{{ task.title }}</h3><p>{{ task.description[:120] }}{% if task.description|length > 120 %}…{% endif %}</p>
-<div class="task-bottom"><strong>₦{{ "{:,}".format(task.reward) }}</strong><span>{{ task.slots }} slots</span></div>
-</a>
-{% else %}<div class="empty">No open tasks yet.</div>{% endfor %}
-</div></section>
-<section class="section referral-card">
-<div class="section-head"><span class="eyebrow">REFER & EARN</span><h2>₦500 for every successful activation</h2></div>
-<div class="referral-box">
-  <div><div class="mini-label">REFERRAL CODE</div><strong>{{ user.referral_code or "—" }}</strong></div>
-  <div><span>Reward is added automatically after the referred worker completes the successful ₦3,000 activation.</span></div>
-</div>
-<div class="actions">
-  <button class="btn ghost" type="button" onclick="navigator.clipboard && navigator.clipboard.writeText('{{ user.referral_code }}')">Copy</button>
-  <button class="btn" type="button" onclick="navigator.share ? navigator.share({title:'TASKORA WORK',text:'Join TASKORA WORK with my referral code {{ user.referral_code }}',url:'{{ request.host_url }}r/{{ user.referral_code }}'}) : navigator.clipboard.writeText('{{ request.host_url }}r/{{ user.referral_code }}')">Share</button>
-</div>
-<div class="referral-link">{{ request.host_url }}r/{{ user.referral_code }}</div>
-<div class="grid two" style="margin-top:18px">
-  <div class="card"><span class="mini-label">PENDING</span><h3>{{ referral_pending }}</h3><p>Signed up but not yet activated.</p></div>
-  <div class="card"><span class="mini-label">APPROVED</span><h3>{{ referral_approved }}</h3><p>Completed ₦3,000 activation. <strong>Reward: ₦500</strong></p></div>
-</div>
-<div class="table-wrap" style="margin-top:18px"><table><tr><th>Referral</th><th>Status</th><th>Reward</th></tr>
-{% for r in referrals %}<tr><td>{{ r.full_name }}</td><td>{% if r.activated %}<span class="status">Approved</span>{% else %}<span class="status">Pending</span>{% endif %}</td><td>{% if r.activated %}₦500{% else %}—{% endif %}</td></tr>{% else %}<tr><td colspan="3">No referrals yet.</td></tr>{% endfor %}
-</table></div>
+
+<section class="section worker-task-section">
+  <div class="section-head worker-section-head">
+    <div>
+      <span class="eyebrow">TASK MARKETPLACE</span>
+      <h2>Available work</h2>
+      <p class="muted">Tasks are funded and reviewed before they are published to workers.</p>
+    </div>
+    <a class="text-link" href="{{ url_for('tasks') }}">View all →</a>
+  </div>
+
+  <div class="worker-task-grid">
+  {% for task in tasks %}
+    {% if user.activated %}
+    <a class="worker-task-card" href="{{ url_for('task_detail', task_id=task.id) }}">
+    {% else %}
+    <a class="worker-task-card worker-task-locked" href="{{ url_for('activate') }}">
+    {% endif %}
+      <div class="worker-task-top">
+        <span class="pill">{{ task.category }}</span>
+        {% if not user.activated %}<span class="worker-lock">🔒 Locked</span>{% endif %}
+      </div>
+      <h3>{{ task.title }}</h3>
+      <p>{{ task.description[:105] }}{% if task.description|length > 105 %}…{% endif %}</p>
+      <div class="worker-task-metrics">
+        <div><span>Reward</span><strong>₦{{ "{:,}".format(task.reward) }}</strong></div>
+        <div><span>Available</span><strong>{{ task.remaining_slots }}</strong></div>
+      </div>
+      <div class="worker-task-action">
+        {% if user.activated %}Open Task <b>→</b>{% else %}Activate to Work <b>→</b>{% endif %}
+      </div>
+    </a>
+  {% else %}
+    <div class="worker-empty-card">
+      <div class="worker-empty-icon">✓</div>
+      <h3>No open tasks yet</h3>
+      <p>New verified campaigns will appear here when Admin publishes them.</p>
+    </div>
+  {% endfor %}
+  </div>
 </section>
+
+<section class="section worker-wallet-strip">
+  <div><span class="eyebrow">YOUR EARNINGS</span><h2>Wallet overview</h2></div>
+  <div class="worker-wallet-values">
+    <div><span>Available</span><strong>₦{{ "{:,}".format(balance) }}</strong></div>
+    <div><span>Pending</span><strong>₦{{ "{:,}".format(pending) }}</strong></div>
+    <div><span>Minimum withdrawal</span><strong>₦{{ "{:,}".format(min_withdrawal) }}</strong></div>
+  </div>
+  <a class="btn secondary" href="{{ url_for('wallet') }}">Open Wallet →</a>
+</section>
+
+<section class="section referral-card">
+  <div class="section-head"><span class="eyebrow">REFER & EARN</span><h2>₦500 for every successful activation</h2></div>
+  <div class="referral-box">
+    <div><div class="mini-label">REFERRAL CODE</div><strong>{{ user.referral_code or "—" }}</strong></div>
+    <div><span>Reward is added automatically after the referred worker completes the successful ₦3,000 activation.</span></div>
+  </div>
+  <div class="actions">
+    <button class="btn ghost" type="button" onclick="navigator.clipboard && navigator.clipboard.writeText('{{ user.referral_code }}')">Copy</button>
+    <button class="btn" type="button" onclick="navigator.share ? navigator.share({title:'TASKORA WORK',text:'Join TASKORA WORK with my referral code {{ user.referral_code }}',url:'{{ request.host_url }}r/{{ user.referral_code }}'}) : navigator.clipboard.writeText('{{ request.host_url }}r/{{ user.referral_code }}')">Share</button>
+  </div>
+  <div class="referral-link">{{ request.host_url }}r/{{ user.referral_code }}</div>
+</section>
+
 <section class="section">
-<div class="section-head"><span class="eyebrow">RECENT ACTIVITY</span><h2>Your submissions</h2></div>
-<div class="table-wrap"><table><tr><th>Task</th><th>Status</th><th>Date</th></tr>
-{% for s in submissions %}<tr><td>{{ s.title }}</td><td><span class="status {{ s.status }}">{{ s.status }}</span></td><td>{{ s.submitted_at[:10] }}</td></tr>{% else %}<tr><td colspan="3">No submissions yet.</td></tr>{% endfor %}
-</table></div></section>
+  <div class="section-head"><span class="eyebrow">RECENT ACTIVITY</span><h2>Your submissions</h2></div>
+  <div class="table-wrap"><table><tr><th>Task</th><th>Status</th><th>Date</th></tr>
+  {% for s in submissions %}<tr><td>{{ s.title }}</td><td><span class="status {{ s.status }}">{{ s.status }}</span></td><td>{{ s.submitted_at[:10] }}</td></tr>{% else %}<tr><td colspan="3">No submissions yet.</td></tr>{% endfor %}
+  </table></div>
+</section>
 {% endblock %}

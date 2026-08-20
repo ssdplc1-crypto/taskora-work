@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Advertiser Login — TASKORA WORK{% endblock %}
+{% block content %}
+<div class="auth">
+  <div class="auth-copy"><span class="eyebrow">TASKORA FOR BUSINESS</span><h1>Advertiser Portal.</h1><p>Manage campaigns, reach and worker submissions from your separate business account.</p></div>
+  <form class="form-card" method="post"><h2>Advertiser Login</h2>
+    <label>Email<input type="email" name="email" required autocomplete="email"></label>
+    <label>Password<input type="password" name="password" required autocomplete="current-password"></label>
+    <button class="btn full business-primary" type="submit">Login to Advertiser Dashboard</button>
+    <p class="muted">New advertiser? <a href="{{ url_for('business_register') }}">Create account</a></p>
+    <p class="muted">Worker account? <a href="{{ url_for('login') }}">Worker Login</a></p>
+  </form>
+</div>
+{% endblock %}

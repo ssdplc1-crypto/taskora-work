@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Create Campaign — TASKORA WORK{% endblock %}
+{% block content %}
+<div class="business-form-shell"><div class="page-head"><div><span class="eyebrow">ADVERTISER</span><h1>Create Task</h1><p class="muted">Give workers clear instructions and set your campaign budget.</p></div></div>
+<form class="business-form" method="post">
+<section class="business-form-card"><h2>Task details</h2><div class="form-grid">
+<label>Task title<input name="title" required placeholder="e.g. Follow our X account"></label>
+<label>Platform<select name="category" required><option value="">Select platform</option><option>WhatsApp</option><option>X</option><option>YouTube</option><option>Telegram</option><option>Facebook</option><option>Instagram</option><option>TikTok</option><option>Website</option><option>Other</option></select></label>
+<label class="full">Task link<input name="task_link" type="url" placeholder="https://..."></label>
+<label class="full">Instructions<textarea name="description" rows="5" required placeholder="Explain exactly what the worker must do and what proof is required."></textarea></label>
+</div></section>
+<section class="business-form-card"><h2>Budget & delivery</h2><div class="form-grid">
+<label>Reward per worker (₦)<input name="reward" type="number" min="1" required></label>
+<label>Number of workers<input name="slots" type="number" min="1" required></label>
+<label>Deadline<input name="deadline" type="datetime-local"></label>
+<label>Proof required<select name="proof_type"><option>screenshot</option><option>text</option><option>link</option><option>both</option></select></label>
+</div><div class="budget-estimate"><span>Estimated worker budget</span><b id="campaignTotal">₦0</b></div></section>
+<div class="business-form-actions"><a class="btn secondary" href="{{ url_for('business_dashboard') }}">Cancel</a><button class="btn business-primary" type="submit">Create Campaign</button></div>
+</form></div>
+<script>
+(function(){const r=document.querySelector('[name="reward"]'),s=document.querySelector('[name="slots"]'),t=document.getElementById('campaignTotal');function c(){t.textContent='₦'+((Number(r.value)||0)*(Number(s.value)||0)).toLocaleString()}r.addEventListener('input',c);s.addEventListener('input',c)})();
+</script>
+{% endblock %}

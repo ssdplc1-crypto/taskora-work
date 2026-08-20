@@ -35,6 +35,7 @@ ADVERTISER_PLATFORM_FEE_PERCENT = int(os.getenv("ADVERTISER_PLATFORM_FEE_PERCENT
 ADVERTISER_PAYMENT_PROVIDER = os.getenv("ADVERTISER_PAYMENT_PROVIDER", "flutterwave")
 ADVERTISER_TASK_APPROVAL = os.getenv("ADVERTISER_TASK_APPROVAL", "admin")
 ADVERTISER_SUBMISSION_APPROVAL = os.getenv("ADVERTISER_SUBMISSION_APPROVAL", "admin")
+ADVERTISER_MIN_FUNDING = int(os.getenv("ADVERTISER_MIN_FUNDING", "100"))
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "CHANGE_THIS_IN_PRODUCTION")
@@ -378,8 +379,98 @@ def init_db():
 
     # Keep old verified accounts consistent with the new status field.
     conn.execute("UPDATE bank_accounts SET status='verified' WHERE is_verified=1 AND (status IS NULL OR status='pending')")
-    conn.execute("UPDATE bank_accounts SET status='pending' WHERE status IS NULL OR status=''")
+    conn.execute("UPDATE bank_accounts SET status='pending' WHERE status IS NULL OR status=''" )
 
+    # Advertiser campaign funding / escrow-style accounting. Money paid by a
+    # business is credited to its internal campaign wallet, then reserved for
+    # a specific task. Worker rewards and the proportional platform fee are
+    # only settled when Admin approves a completed submission. Unused reserved
+    # funds are released back to the advertiser wallet when a campaign closes.
+    if conn.is_postgres:
+        for statement in (
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'unfunded'",
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS worker_budget BIGINT NOT NULL DEFAULT 0",
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS platform_fee BIGINT NOT NULL DEFAULT 0",
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS total_budget BIGINT NOT NULL DEFAULT 0",
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reserved_budget BIGINT NOT NULL DEFAULT 0",
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS completed_slots INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS funded_at TEXT",
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS approved_at TEXT",
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS closed_at TEXT",
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS refund_reference TEXT",
+        ):
+            conn.execute(statement)
+    else:
+        task_columns = {row[1] for row in conn.execute("PRAGMA table_info(tasks)").fetchall()}
+        task_migrations = {
+            "payment_status": "ALTER TABLE tasks ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'unfunded'",
+            "worker_budget": "ALTER TABLE tasks ADD COLUMN worker_budget INTEGER NOT NULL DEFAULT 0",
+            "platform_fee": "ALTER TABLE tasks ADD COLUMN platform_fee INTEGER NOT NULL DEFAULT 0",
+            "total_budget": "ALTER TABLE tasks ADD COLUMN total_budget INTEGER NOT NULL DEFAULT 0",
+            "reserved_budget": "ALTER TABLE tasks ADD COLUMN reserved_budget INTEGER NOT NULL DEFAULT 0",
+            "completed_slots": "ALTER TABLE tasks ADD COLUMN completed_slots INTEGER NOT NULL DEFAULT 0",
+            "funded_at": "ALTER TABLE tasks ADD COLUMN funded_at TEXT",
+            "approved_at": "ALTER TABLE tasks ADD COLUMN approved_at TEXT",
+            "closed_at": "ALTER TABLE tasks ADD COLUMN closed_at TEXT",
+            "refund_reference": "ALTER TABLE tasks ADD COLUMN refund_reference TEXT",
+        }
+        for column, statement in task_migrations.items():
+            if column not in task_columns:
+                conn.execute(statement)
+
+    if conn.is_postgres:
+        conn.executescript("""
+        CREATE TABLE IF NOT EXISTS advertiser_wallets (
+            user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            balance BIGINT NOT NULL DEFAULT 0,
+            reserved_balance BIGINT NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS advertiser_transactions (
+            id BIGSERIAL PRIMARY KEY, advertiser_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            task_id BIGINT REFERENCES tasks(id) ON DELETE SET NULL, type TEXT NOT NULL, amount BIGINT NOT NULL,
+            reference TEXT UNIQUE NOT NULL, description TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'completed', created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS platform_revenue (
+            id BIGSERIAL PRIMARY KEY, task_id BIGINT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+            advertiser_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE, submission_id BIGINT REFERENCES submissions(id) ON DELETE SET NULL,
+            amount BIGINT NOT NULL, reference TEXT UNIQUE NOT NULL, created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_adv_transactions_advertiser ON advertiser_transactions(advertiser_id);
+        CREATE INDEX IF NOT EXISTS idx_adv_transactions_task ON advertiser_transactions(task_id);
+        CREATE INDEX IF NOT EXISTS idx_platform_revenue_task ON platform_revenue(task_id);
+        """)
+    else:
+        conn.executescript("""
+        CREATE TABLE IF NOT EXISTS advertiser_wallets (
+            user_id INTEGER PRIMARY KEY, balance INTEGER NOT NULL DEFAULT 0, reserved_balance INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        CREATE TABLE IF NOT EXISTS advertiser_transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, advertiser_id INTEGER NOT NULL, task_id INTEGER, type TEXT NOT NULL,
+            amount INTEGER NOT NULL, reference TEXT UNIQUE NOT NULL, description TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'completed',
+            created_at TEXT NOT NULL, FOREIGN KEY(advertiser_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE SET NULL
+        );
+        CREATE TABLE IF NOT EXISTS platform_revenue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER NOT NULL, advertiser_id INTEGER NOT NULL, submission_id INTEGER,
+            amount INTEGER NOT NULL, reference TEXT UNIQUE NOT NULL, created_at TEXT NOT NULL,
+            FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE, FOREIGN KEY(advertiser_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(submission_id) REFERENCES submissions(id) ON DELETE SET NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_adv_transactions_advertiser ON advertiser_transactions(advertiser_id);
+        CREATE INDEX IF NOT EXISTS idx_adv_transactions_task ON advertiser_transactions(task_id);
+        """)
+
+    # Backfill advertiser accounting fields for old advertiser tasks. Existing
+    # campaigns are left untouched financially; new campaigns use the full
+    # funded/reserved flow.
+    # Old advertiser campaigns created before the funding system are hidden from
+    # workers until their owner funds them again. No money is fabricated during migration.
+    conn.execute("UPDATE tasks SET status='awaiting_payment', payment_status='unfunded' WHERE owner_user_id IS NOT NULL AND payment_status='unfunded' AND status='open'")
+    conn.execute("UPDATE tasks SET worker_budget=reward*slots WHERE owner_user_id IS NOT NULL AND worker_budget=0")
+    conn.execute("UPDATE tasks SET platform_fee=(worker_budget * ?) / 100 WHERE owner_user_id IS NOT NULL AND platform_fee=0", (ADVERTISER_PLATFORM_FEE_PERCENT,))
+    conn.execute("UPDATE tasks SET total_budget=worker_budget+platform_fee WHERE owner_user_id IS NOT NULL AND total_budget=0")
     conn.commit()
     conn.close()
 
@@ -1046,6 +1137,52 @@ def flutterwave_webhook():
                         )
                         reward_referrer_for_activation(conn, user["id"])
 
+            # Advertiser campaign/wallet funding webhooks are also verified
+            # server-side. The unique transaction event keeps callbacks idempotent.
+            if (
+                event in {"charge.completed", "payment.completed", "charge.completed.v2"}
+                and status == "successful"
+                and currency == CURRENCY
+                and email
+                and provider_tx_ref.startswith("TASKORA-BIZ-")
+            ):
+                advertiser = conn.execute(
+                    "SELECT id,email FROM users WHERE LOWER(email)=? AND role IN ('advertiser','business') LIMIT 1",
+                    (email,),
+                ).fetchone()
+                if advertiser:
+                    parts = provider_tx_ref.split("-")
+                    task_id = int(parts[2]) if len(parts) >= 4 and parts[2].isdigit() else 0
+                    task = conn.execute("SELECT * FROM tasks WHERE id=? AND owner_user_id=?", (task_id, advertiser["id"])).fetchone() if task_id else None
+                    if task and amount == float(task["total_budget"] or 0):
+                        already = conn.execute("SELECT id FROM payment_events WHERE transaction_id=? AND event_type='business_funding_verified' LIMIT 1", (transaction_id,)).fetchone()
+                        if not already:
+                            conn.execute("INSERT OR IGNORE INTO payment_events(tx_ref,user_id,event_type,transaction_id,amount,currency,raw_json,created_at) VALUES(?,?,?,?,?,?,?,?)", (f"FLW-BIZ-{transaction_id}", advertiser["id"], "business_funding_verified", transaction_id, int(amount), CURRENCY, json.dumps(verified), now()))
+                            _ensure_advertiser_wallet(conn, advertiser["id"])
+                            conn.execute("UPDATE advertiser_wallets SET balance=balance+?,updated_at=? WHERE user_id=?", (int(amount), now(), advertiser["id"]))
+                            _record_advertiser_tx(conn, advertiser["id"], int(amount), f"TASKORA-DEPOSIT-{transaction_id}", f"Campaign funding received: {task['title']}", "funding", task_id)
+                            if _reserve_task_from_wallet(conn, task_id, advertiser["id"]):
+                                conn.execute("UPDATE tasks SET status='pending' WHERE id=?", (task_id,))
+
+            if (
+                event in {"charge.completed", "payment.completed", "charge.completed.v2"}
+                and status == "successful"
+                and currency == CURRENCY
+                and email
+                and provider_tx_ref.startswith("TASKORA-BAL-")
+            ):
+                advertiser = conn.execute(
+                    "SELECT id FROM users WHERE LOWER(email)=? AND role IN ('advertiser','business') LIMIT 1",
+                    (email,),
+                ).fetchone()
+                if advertiser:
+                    already = conn.execute("SELECT id FROM payment_events WHERE transaction_id=? AND event_type='business_wallet_funding_verified' LIMIT 1", (transaction_id,)).fetchone()
+                    if not already:
+                        conn.execute("INSERT OR IGNORE INTO payment_events(tx_ref,user_id,event_type,transaction_id,amount,currency,raw_json,created_at) VALUES(?,?,?,?,?,?,?,?)", (f"FLW-BAL-{transaction_id}", advertiser["id"], "business_wallet_funding_verified", transaction_id, int(amount), CURRENCY, json.dumps(verified), now()))
+                        _ensure_advertiser_wallet(conn, advertiser["id"])
+                        conn.execute("UPDATE advertiser_wallets SET balance=balance+?,updated_at=? WHERE user_id=?", (int(amount), now(), advertiser["id"]))
+                        _record_advertiser_tx(conn, advertiser["id"], int(amount), f"TASKORA-DEPOSIT-{transaction_id}", "Advertiser wallet funding received", "funding")
+
             conn.commit()
         finally:
             conn.close()
@@ -1107,6 +1244,11 @@ def task_detail(task_id):
 @login_required
 def submit_task(task_id):
     u = current_user()
+
+    if str(u["role"] or "").lower() != "worker":
+        if str(u["role"] or "").lower() in ("advertiser", "business"):
+            return redirect(url_for("business_dashboard"))
+        return redirect(url_for("admin_dashboard"))
 
     if not u["activated"]:
         return redirect(url_for("activate"))
@@ -1403,11 +1545,16 @@ def withdraw():
 @admin_required
 def admin_dashboard():
     conn = db()
+    _expire_advertiser_campaigns(conn)
     stats = {
         "users": conn.execute("SELECT COUNT(*) FROM users WHERE role='worker'").fetchone()[0],
         "activated": conn.execute("SELECT COUNT(*) FROM users WHERE role='worker' AND activated=1").fetchone()[0],
+        "businesses": conn.execute("SELECT COUNT(*) FROM users WHERE role IN ('advertiser','business')").fetchone()[0],
         "tasks": conn.execute("SELECT COUNT(*) FROM tasks").fetchone()[0],
+        "business_pending_tasks": conn.execute("SELECT COUNT(*) FROM tasks WHERE owner_user_id IS NOT NULL AND status IN ('pending','awaiting_payment')").fetchone()[0],
         "pending_submissions": conn.execute("SELECT COUNT(*) FROM submissions WHERE status='pending'").fetchone()[0],
+        "reserved_campaign_funds": conn.execute("SELECT COALESCE(SUM(reserved_balance),0) FROM advertiser_wallets").fetchone()[0],
+        "platform_revenue": conn.execute("SELECT COALESCE(SUM(amount),0) FROM platform_revenue").fetchone()[0],
         "pending_withdrawals": conn.execute("SELECT COUNT(*) FROM withdrawals WHERE status='pending'").fetchone()[0],
         "paid_withdrawals": conn.execute("SELECT COUNT(*) FROM withdrawals WHERE status='paid'").fetchone()[0],
     }
@@ -1426,6 +1573,7 @@ def admin_dashboard():
 def admin_tasks():
     """List all tasks for admin management, regardless of deadline."""
     conn = db()
+    _expire_advertiser_campaigns(conn)
     tasks = conn.execute("""
         SELECT
             t.*,
@@ -1448,14 +1596,17 @@ def admin_tasks():
 def admin_approve_advertiser_task(task_id):
     conn = db()
     try:
-        task = conn.execute("SELECT id, title, status, owner_user_id FROM tasks WHERE id=?", (task_id,)).fetchone()
+        task = conn.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
         if not task:
             flash("Task not found.", "error")
             return redirect(url_for("admin_tasks"))
         if not task["owner_user_id"]:
             flash("This is an admin-created task; no advertiser approval is needed.", "info")
             return redirect(url_for("admin_tasks"))
-        conn.execute("UPDATE tasks SET status='open' WHERE id=?", (task_id,))
+        if task["payment_status"] != "funded" or int(task["reserved_budget"] or 0) <= 0:
+            flash("This advertiser task must be fully funded before it can be published.", "error")
+            return redirect(url_for("admin_tasks"))
+        conn.execute("UPDATE tasks SET status='open', approved_at=? WHERE id=?", (now(), task_id))
         conn.commit()
         flash("Advertiser task approved and published to workers.", "success")
     except Exception as e:
@@ -1476,6 +1627,11 @@ def admin_delete_task(task_id):
         if not task:
             flash("Task not found.", "error")
             return redirect(url_for("admin_tasks"))
+
+        # Return any unused advertiser reserve before deleting a business campaign.
+        full_task = conn.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
+        if full_task and full_task["owner_user_id"] and int(full_task["reserved_budget"] or 0) > 0:
+            _release_task_reserve(conn, full_task, "Unused campaign funds returned after Admin deleted the campaign.")
 
         # Do not leave pending ledger entries behind when submissions are removed.
         # Approved/available earnings are intentionally preserved.
@@ -1637,6 +1793,13 @@ def review_submission(submission_id, action):
         # Move the existing pending earning to AVAILABLE.
         # If this is an older submission created before the pending-ledger fix,
         # create the available earning once as a safe backward-compatible fallback.
+        # Business-funded campaigns are settled from their reserved balance only
+        # when Admin approves the worker proof. Admin-created tasks keep the old
+        # worker-only ledger flow.
+        task_full = conn.execute("SELECT * FROM tasks WHERE id=?", (s["task_id"],)).fetchone()
+        if task_full and task_full["owner_user_id"]:
+            _settle_business_submission(conn, task_full, submission_id)
+
         conn.execute(
             "UPDATE submissions SET status='approved',reviewed_at=? WHERE id=? AND status='pending'",
             (now(), submission_id)
@@ -1664,7 +1827,11 @@ def review_submission(submission_id, action):
                 )
             )
 
-        flash("Submission approved and earnings credited.", "success")
+        task_full = conn.execute("SELECT * FROM tasks WHERE id=?", (s["task_id"],)).fetchone()
+        if task_full and task_full["owner_user_id"] and int(task_full["completed_slots"] or 0) >= int(task_full["slots"] or 0):
+            conn.execute("UPDATE tasks SET status='completed', reserved_budget=0, payment_status='completed', closed_at=? WHERE id=?", (now(), task_full["id"]))
+
+        flash("Submission approved and worker earnings credited. Advertiser campaign funds were settled.", "success")
     else:
         note = request.form.get("note", "Task submission rejected.").strip()[:500]
         conn.execute(
@@ -2035,6 +2202,7 @@ if __name__ == "__main__":
 
 
 # ---------------- BUSINESS / ADVERTISER ----------------
+
 def _business_guard():
     """Allow only a dedicated advertiser/business account into business routes."""
     user = current_user()
@@ -2048,14 +2216,161 @@ def _business_guard():
     return user, None
 
 
+def _ensure_advertiser_wallet(conn, user_id):
+    conn.execute(
+        "INSERT OR IGNORE INTO advertiser_wallets(user_id,balance,reserved_balance,updated_at) VALUES(?,?,?,?)",
+        (user_id, 0, 0, now()),
+    )
+
+
+def _advertiser_wallet(conn, user_id):
+    _ensure_advertiser_wallet(conn, user_id)
+    return conn.execute(
+        "SELECT * FROM advertiser_wallets WHERE user_id=?", (user_id,)
+    ).fetchone()
+
+
+def _campaign_numbers(reward, slots):
+    reward = int(reward)
+    slots = int(slots)
+    worker_budget = reward * slots
+    # Fee is charged only on work actually completed. Keeping it per-worker
+    # makes the budget deterministic and prevents rounding surprises.
+    fee_per_worker = (reward * ADVERTISER_PLATFORM_FEE_PERCENT) // 100
+    platform_fee = fee_per_worker * slots
+    total_budget = worker_budget + platform_fee
+    return worker_budget, platform_fee, total_budget, fee_per_worker
+
+
+def _record_advertiser_tx(conn, advertiser_id, amount, reference, description, tx_type, task_id=None):
+    conn.execute(
+        "INSERT OR IGNORE INTO advertiser_transactions(advertiser_id,task_id,type,amount,reference,description,status,created_at) VALUES(?,?,?,?,?,?,?,?)",
+        (advertiser_id, task_id, tx_type, amount, reference, description, "completed", now()),
+    )
+
+
+def _reserve_task_from_wallet(conn, task_id, advertiser_id):
+    task = conn.execute("SELECT * FROM tasks WHERE id=? AND owner_user_id=?", (task_id, advertiser_id)).fetchone()
+    if not task:
+        raise RuntimeError("Campaign not found.")
+    total = int(task["total_budget"] or 0)
+    if total <= 0:
+        raise RuntimeError("Campaign budget is invalid.")
+    wallet = _advertiser_wallet(conn, advertiser_id)
+    if int(wallet["balance"] or 0) < total:
+        return False
+    updated = conn.execute(
+        "UPDATE advertiser_wallets SET balance=balance-?, reserved_balance=reserved_balance+?, updated_at=? WHERE user_id=? AND balance>=?",
+        (total, total, now(), advertiser_id, total),
+    )
+    if updated.rowcount != 1:
+        return False
+    conn.execute(
+        "UPDATE tasks SET payment_status='funded', reserved_budget=?, funded_at=? WHERE id=? AND owner_user_id=?",
+        (total, now(), task_id, advertiser_id),
+    )
+    _record_advertiser_tx(
+        conn, advertiser_id, -total, f"TASKORA-RESERVE-{task_id}",
+        f"Campaign budget reserved: {task['title']}", "campaign_reserve", task_id,
+    )
+    return True
+
+
+def _release_task_reserve(conn, task, reason="Campaign closed; unused funds returned to advertiser wallet."):
+    reserved = int(task["reserved_budget"] or 0)
+    # If Admin closes/rejects a campaign, pending worker proofs must also be
+    # closed so they cannot be approved later against a refunded budget.
+    pending_submissions = conn.execute("SELECT id,user_id FROM submissions WHERE task_id=? AND status='pending'", (task["id"],)).fetchall()
+    for submission in pending_submissions:
+        conn.execute("UPDATE submissions SET status='rejected',reviewer_note=?,reviewed_at=? WHERE id=? AND status='pending'", (reason[:500], now(), submission["id"]))
+        ref = f"TASKORA-EARN-{submission['user_id']}-{submission['id']}"
+        conn.execute("UPDATE ledger SET status='rejected',description=? WHERE reference=? AND user_id=? AND kind='earning' AND status='pending'", (f"Campaign closed: {task['title']}", ref, submission["user_id"]))
+
+    if reserved <= 0:
+        return 0
+    advertiser_id = task["owner_user_id"]
+    conn.execute(
+        "UPDATE advertiser_wallets SET balance=balance+?, reserved_balance=MAX(0,reserved_balance-?), updated_at=? WHERE user_id=?",
+        (reserved, reserved, now(), advertiser_id),
+    )
+    ref = f"TASKORA-REFUND-{task['id']}"
+    _record_advertiser_tx(conn, advertiser_id, reserved, ref, reason, "campaign_refund", task["id"])
+    conn.execute(
+        "UPDATE tasks SET reserved_budget=0,payment_status='refunded',closed_at=?,refund_reference=? WHERE id=?",
+        (now(), ref, task["id"]),
+    )
+    return reserved
+
+
+def _expire_advertiser_campaigns(conn):
+    """Close expired funded campaigns once no worker proof is awaiting review."""
+    rows = conn.execute("SELECT * FROM tasks WHERE owner_user_id IS NOT NULL AND status IN ('open','pending') AND deadline IS NOT NULL AND deadline <> ''").fetchall()
+    for task in rows:
+        try:
+            raw = str(task["deadline"])
+            dt = datetime.fromisoformat(raw)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=LAGOS_TZ)
+            if dt.astimezone(LAGOS_TZ) >= lagos_now():
+                continue
+        except Exception:
+            continue
+        pending = conn.execute("SELECT COUNT(*) FROM submissions WHERE task_id=? AND status='pending'", (task["id"],)).fetchone()[0]
+        if pending:
+            continue
+        _release_task_reserve(conn, task, "Campaign deadline passed; unused funds returned to advertiser wallet.")
+        conn.execute("UPDATE tasks SET status='expired' WHERE id=?", (task["id"],))
+    conn.commit()
+
+
+def _record_platform_revenue(conn, task_id, advertiser_id, submission_id, amount, reference):
+    conn.execute(
+        "INSERT OR IGNORE INTO platform_revenue(task_id,advertiser_id,submission_id,amount,reference,created_at) VALUES(?,?,?,?,?,?)",
+        (task_id, advertiser_id, submission_id, int(amount), reference, now()),
+    )
+
+
+def _settle_business_submission(conn, task, submission_id):
+    """Charge the advertiser only when Admin approves a worker submission."""
+    reward = int(task["reward"] or 0)
+    _, _, _, fee_per_worker = _campaign_numbers(reward, 1)
+    charge = reward + fee_per_worker
+    reserved = int(task["reserved_budget"] or 0)
+    if reserved < charge:
+        raise RuntimeError("This campaign no longer has enough reserved funds.")
+
+    updated = conn.execute(
+        "UPDATE advertiser_wallets SET reserved_balance=reserved_balance-?, updated_at=? WHERE user_id=? AND reserved_balance>=?",
+        (charge, now(), task["owner_user_id"], charge),
+    )
+    if updated.rowcount != 1:
+        raise RuntimeError("Advertiser campaign funds could not be settled.")
+
+    conn.execute(
+        "UPDATE tasks SET reserved_budget=reserved_budget-?, completed_slots=completed_slots+1 WHERE id=?",
+        (charge, task["id"]),
+    )
+    settlement_ref = f"TASKORA-SETTLE-{task['id']}-{submission_id}"
+    _record_advertiser_tx(
+        conn, task["owner_user_id"], -charge, settlement_ref,
+        f"Worker reward + {ADVERTISER_PLATFORM_FEE_PERCENT}% platform fee settled: {task['title']}",
+        "worker_settlement", task["id"],
+    )
+    _record_platform_revenue(
+        conn, task["id"], task["owner_user_id"], submission_id, fee_per_worker,
+        f"TASKORA-FEE-{task['id']}-{submission_id}",
+    )
+
+
 def _advertiser_metrics(user_id):
     conn = db()
+    _expire_advertiser_campaigns(conn)
+    wallet = _advertiser_wallet(conn, user_id)
     tasks = conn.execute(
         "SELECT * FROM tasks WHERE owner_user_id=? ORDER BY id DESC", (user_id,)
     ).fetchall()
     pending_reviews = conn.execute("""
-        SELECT COUNT(*) FROM submissions s
-        JOIN tasks t ON t.id=s.task_id
+        SELECT COUNT(*) FROM submissions s JOIN tasks t ON t.id=s.task_id
         WHERE t.owner_user_id=? AND s.status='pending'
     """, (user_id,)).fetchone()[0]
     approved = conn.execute("""
@@ -2074,32 +2389,33 @@ def _advertiser_metrics(user_id):
         SELECT COALESCE(SUM(t.reward),0) FROM submissions s JOIN tasks t ON t.id=s.task_id
         WHERE t.owner_user_id=? AND s.status='approved'
     """, (user_id,)).fetchone()[0]
-    rejected_value = conn.execute("""
-        SELECT COALESCE(SUM(t.reward),0) FROM submissions s JOIN tasks t ON t.id=s.task_id
-        WHERE t.owner_user_id=? AND s.status='rejected'
-    """, (user_id,)).fetchone()[0]
-    reach = conn.execute(
-        "SELECT COALESCE(SUM(slots),0) FROM tasks WHERE owner_user_id=?", (user_id,)
-    ).fetchone()[0]
+    total_budget = conn.execute("SELECT COALESCE(SUM(total_budget),0) FROM tasks WHERE owner_user_id=?", (user_id,)).fetchone()[0]
+    reserved = int(wallet["reserved_balance"] or 0)
     active = conn.execute(
         "SELECT COUNT(*) FROM tasks WHERE owner_user_id=? AND status='open'", (user_id,)
+    ).fetchone()[0]
+    completed = conn.execute(
+        "SELECT COALESCE(SUM(completed_slots),0) FROM tasks WHERE owner_user_id=?", (user_id,)
     ).fetchone()[0]
     conn.close()
     total_submissions = approved + rejected + pending_reviews
     conversion = round((approved / total_submissions) * 100, 1) if total_submissions else 0
+    budget_used = max(0, int(total_budget or 0) - reserved)
+    budget_percent = round((budget_used / int(total_budget)) * 100, 1) if total_budget else 0
     return {
         "tasks": tasks,
-        "available_budget": 0,
+        "available_budget": int(wallet["balance"] or 0),
+        "reserved_budget": reserved,
         "active_campaigns": active,
-        "total_reach": reach,
+        "total_reach": completed,
         "pending_reviews": pending_reviews,
-        "budget_used_percent": 0,
+        "budget_used_percent": min(100, budget_percent),
         "approved_submissions": approved,
         "rejected_submissions": rejected,
         "conversion_rate": conversion,
-        "pending_value": pending_value,
-        "approved_value": approved_value,
-        "rejected_value": rejected_value,
+        "pending_value": int(pending_value or 0),
+        "approved_value": int(approved_value or 0),
+        "total_budget": int(total_budget or 0),
     }
 
 
@@ -2126,8 +2442,9 @@ def business_register():
                 "INSERT INTO users(full_name,email,phone,password_hash,role,activated,referral_code,created_at) VALUES(?,?,?,?,?,?,?,?)",
                 (business_name, email, phone, generate_password_hash(password), "advertiser", 1, code, now()),
             )
-            conn.commit()
             user = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+            _ensure_advertiser_wallet(conn, user["id"])
+            conn.commit()
             session.clear()
             session["user_id"] = user["id"]
             return redirect(url_for("business_dashboard"))
@@ -2142,18 +2459,9 @@ def business_register():
 
 @app.route("/business/login", methods=["GET", "POST"])
 def business_login():
-    if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
-        password = request.form.get("password", "")
-        conn = db()
-        user = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
-        conn.close()
-        if user and str(user["role"] or "").lower() in ("advertiser", "business") and check_password_hash(user["password_hash"], password):
-            session.clear()
-            session["user_id"] = user["id"]
-            return redirect(url_for("business_dashboard"))
-        flash("Invalid advertiser email or password.", "error")
-    return render_template("business/login.html")
+    # Advertiser, Worker and Admin accounts all use the same secure sign-in.
+    # The role stored on the account decides which dashboard opens.
+    return redirect(url_for("login"))
 
 
 @app.route("/business/dashboard")
@@ -2161,7 +2469,7 @@ def business_dashboard():
     user, response = _business_guard()
     if response:
         return response
-    return render_template("business/dashboard.html", user=user, **_advertiser_metrics(user["id"]))
+    return render_template("business/dashboard.html", user=user, fee_percent=ADVERTISER_PLATFORM_FEE_PERCENT, **_advertiser_metrics(user["id"]))
 
 
 @app.route("/business/tasks/new", methods=["GET", "POST"])
@@ -2182,25 +2490,37 @@ def business_create_task():
         deadline = request.form.get("deadline", "").strip()
         if not title or not category or not description or reward <= 0 or slots <= 0:
             flash("Complete all task fields correctly.", "error")
-            return render_template("business/create_task.html")
+            return render_template("business/create_task.html", fee_percent=ADVERTISER_PLATFORM_FEE_PERCENT)
         if task_link and not task_link.startswith(("http://", "https://")):
             flash("Task link must start with http:// or https://.", "error")
-            return render_template("business/create_task.html")
+            return render_template("business/create_task.html", fee_percent=ADVERTISER_PLATFORM_FEE_PERCENT)
+
+        worker_budget, platform_fee, total_budget, fee_per_worker = _campaign_numbers(reward, slots)
+        if total_budget < ADVERTISER_MIN_FUNDING:
+            flash(f"Campaign total must be at least ₦{ADVERTISER_MIN_FUNDING:,}.", "error")
+            return render_template("business/create_task.html", fee_percent=ADVERTISER_PLATFORM_FEE_PERCENT)
+
         conn = db()
         try:
             conn.execute(
-                "INSERT INTO tasks(owner_user_id,title,category,description,task_link,reward,deadline,slots,difficulty,status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-                (user["id"], title, category, description, task_link or None, reward, deadline or None, slots, "Beginner", "pending", now()),
+                "INSERT INTO tasks(owner_user_id,title,category,description,task_link,reward,deadline,slots,difficulty,status,created_at,payment_status,worker_budget,platform_fee,total_budget,reserved_budget,completed_slots) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (user["id"], title, category, description, task_link or None, reward, deadline or None, slots, "Beginner", "awaiting_payment", now(), "unfunded", worker_budget, platform_fee, total_budget, 0, 0),
             )
+            task = conn.execute("SELECT * FROM tasks WHERE owner_user_id=? ORDER BY id DESC LIMIT 1", (user["id"],)).fetchone()
+            if _reserve_task_from_wallet(conn, task["id"], user["id"]):
+                conn.execute("UPDATE tasks SET status='pending' WHERE id=?", (task["id"],))
+                conn.commit()
+                flash("Campaign budget reserved. Please review the task and submit it to TASKORA admin for approval.", "success")
+                return redirect(url_for("business_dashboard"))
             conn.commit()
-            flash("Task submitted. Admin must approve it before workers can see it.", "success")
-            return redirect(url_for("business_dashboard"))
+            flash("Task created. Fund the campaign first; it will go to Admin for approval after payment is confirmed.", "info")
+            return redirect(url_for("business_fund_task", task_id=task["id"]))
         except Exception as e:
             conn.rollback()
-            flash(f"Could not create task: {e}", "error")
+            flash(f"Could not create campaign: {e}", "error")
         finally:
             conn.close()
-    return render_template("business/create_task.html")
+    return render_template("business/create_task.html", fee_percent=ADVERTISER_PLATFORM_FEE_PERCENT)
 
 
 @app.route("/business/tasks")
@@ -2208,7 +2528,130 @@ def business_tasks():
     user, response = _business_guard()
     if response:
         return response
-    return render_template("business/dashboard.html", user=user, **_advertiser_metrics(user["id"]))
+    return redirect(url_for("business_dashboard"))
+
+
+@app.route("/business/tasks/<int:task_id>/fund", methods=["GET", "POST"])
+def business_fund_task(task_id):
+    user, response = _business_guard()
+    if response:
+        return response
+    conn = db()
+    task = conn.execute("SELECT * FROM tasks WHERE id=? AND owner_user_id=?", (task_id, user["id"])).fetchone()
+    wallet = _advertiser_wallet(conn, user["id"])
+    conn.close()
+    if not task:
+        flash("Campaign not found.", "error")
+        return redirect(url_for("business_dashboard"))
+    if task["payment_status"] == "funded":
+        flash("This campaign is already funded and reserved.", "success")
+        return redirect(url_for("business_dashboard"))
+
+    if request.method == "POST":
+        if not FLW_SECRET_KEY:
+            flash("Flutterwave is not configured on the server. Add FLW_SECRET_KEY in Render Environment.", "error")
+            return redirect(url_for("business_fund_task", task_id=task_id))
+        tx_ref = f"TASKORA-BIZ-{task_id}-{uuid.uuid4().hex[:16]}"
+        redirect_url = f"{BASE_URL}/business/payment/callback"
+        payload = {
+            "tx_ref": tx_ref,
+            "amount": int(task["total_budget"]),
+            "currency": CURRENCY,
+            "redirect_url": redirect_url,
+            "payment_options": "card,banktransfer,ussd",
+            "customer": {"email": user["email"], "name": user["full_name"], "phonenumber": user["phone"]},
+            "customizations": {"title": "TASKORA WORK Campaign Funding", "description": f"Fund campaign: {task['title']}"},
+            "meta": {"taskora_type": "advertiser_campaign", "task_id": task_id, "advertiser_id": user["id"]},
+        }
+        try:
+            result = flw_post("/payments", payload)
+            checkout_link = str((result.get("data") or {}).get("link") or "").strip()
+            if not checkout_link:
+                raise RuntimeError("Flutterwave did not return a checkout link.")
+            conn = db()
+            conn.execute(
+                "INSERT OR IGNORE INTO payment_events(tx_ref,user_id,event_type,amount,currency,raw_json,created_at) VALUES(?,?,?,?,?,?,?)",
+                (tx_ref, user["id"], "business_funding_started", int(task["total_budget"]), CURRENCY, json.dumps({"task_id": task_id, "flutterwave_response": result}), now()),
+            )
+            conn.commit()
+            conn.close()
+            return redirect(checkout_link)
+        except Exception as e:
+            flash(str(e), "error")
+            return redirect(url_for("business_fund_task", task_id=task_id))
+
+    worker_budget, platform_fee, total_budget, _ = _campaign_numbers(task["reward"], task["slots"])
+    return render_template("business/fund_task.html", task=task, wallet=wallet, worker_budget=worker_budget, platform_fee=platform_fee, total_budget=total_budget, fee_percent=ADVERTISER_PLATFORM_FEE_PERCENT)
+
+
+@app.route("/business/payment/callback")
+def business_payment_callback():
+    status = str(request.args.get("status") or "").lower()
+    transaction_id = request.args.get("transaction_id") or request.args.get("transactionId")
+    if status != "successful" or not transaction_id:
+        flash("Payment was not completed.", "error")
+        return redirect(url_for("business_dashboard"))
+    u = current_user()
+    if not u or str(u["role"] or "").lower() not in ("advertiser", "business"):
+        flash("Please log in to your advertiser account to continue.", "error")
+        return redirect(url_for("business_login"))
+
+    try:
+        verified = flw_get(f"/transactions/{str(transaction_id).strip()}/verify")
+        tx = verified.get("data") or {}
+        if str(tx.get("status") or "").lower() != "successful":
+            raise RuntimeError("Payment is not successful.")
+        if str(tx.get("currency") or "").upper() != CURRENCY:
+            raise RuntimeError("Invalid payment currency.")
+        amount = int(float(tx.get("amount") or 0))
+        email = str((tx.get("customer") or {}).get("email") or "").strip().lower()
+        if email != str(u["email"] or "").strip().lower():
+            raise RuntimeError("Payment email does not match your advertiser account.")
+        provider_ref = str(tx.get("tx_ref") or "").strip()
+        if not provider_ref.startswith("TASKORA-BIZ-"):
+            raise RuntimeError("This payment is not a TASKORA campaign payment.")
+        try:
+            task_id = int(provider_ref.split("-")[2])
+        except Exception:
+            raise RuntimeError("Invalid TASKORA campaign payment reference.")
+
+        conn = db()
+        task = conn.execute("SELECT * FROM tasks WHERE id=? AND owner_user_id=?", (task_id, u["id"])).fetchone()
+        if not task:
+            conn.close()
+            raise RuntimeError("Campaign not found for this payment.")
+        expected = int(task["total_budget"] or 0)
+        if amount != expected:
+            conn.close()
+            raise RuntimeError(f"Invalid campaign payment amount. Expected ₦{expected:,}.")
+        used = conn.execute("SELECT id FROM payment_events WHERE transaction_id=? AND event_type='business_funding_verified' LIMIT 1", (str(transaction_id),)).fetchone()
+        if used:
+            conn.close()
+            flash("This campaign payment was already verified.", "success")
+            return redirect(url_for("business_dashboard"))
+
+        conn.execute(
+            "INSERT OR IGNORE INTO payment_events(tx_ref,user_id,event_type,transaction_id,amount,currency,raw_json,created_at) VALUES(?,?,?,?,?,?,?,?)",
+            (f"FLW-BIZ-{transaction_id}", u["id"], "business_funding_verified", str(transaction_id), amount, CURRENCY, json.dumps(verified), now()),
+        )
+        _ensure_advertiser_wallet(conn, u["id"])
+        conn.execute("UPDATE advertiser_wallets SET balance=balance+?,updated_at=? WHERE user_id=?", (amount, now(), u["id"]))
+        _record_advertiser_tx(conn, u["id"], amount, f"TASKORA-DEPOSIT-{transaction_id}", f"Campaign funding received: {task['title']}", "funding", task_id)
+        if not _reserve_task_from_wallet(conn, task_id, u["id"]):
+            raise RuntimeError("Payment was received, but campaign reservation could not be completed. Contact TASKORA support before paying again.")
+        conn.execute("UPDATE tasks SET status='pending' WHERE id=?", (task_id,))
+        conn.commit()
+        conn.close()
+        flash("Payment confirmed. Campaign funds are reserved and the task is now waiting for Admin approval.", "success")
+        return redirect(url_for("business_dashboard"))
+    except Exception as e:
+        try:
+            conn.rollback()
+            conn.close()
+        except Exception:
+            pass
+        flash(str(e), "error")
+        return redirect(url_for("business_dashboard"))
 
 
 @app.route("/business/wallet")
@@ -2216,17 +2659,93 @@ def business_wallet():
     user, response = _business_guard()
     if response:
         return response
-    metrics = _advertiser_metrics(user["id"])
-    flash("Advertiser wallet is ready for campaign funding integration.", "info")
-    return render_template("business/dashboard.html", user=user, **metrics)
+    conn = db()
+    wallet = _advertiser_wallet(conn, user["id"])
+    transactions = conn.execute("SELECT * FROM advertiser_transactions WHERE advertiser_id=? ORDER BY id DESC LIMIT 100", (user["id"],)).fetchall()
+    conn.commit()
+    conn.close()
+    return render_template("business/wallet.html", user=user, wallet=wallet, transactions=transactions, fee_percent=ADVERTISER_PLATFORM_FEE_PERCENT)
+
+
+@app.route("/business/wallet/fund", methods=["POST"])
+def business_wallet_fund():
+    user, response = _business_guard()
+    if response:
+        return response
+    try:
+        amount = int(request.form.get("amount", "0"))
+    except ValueError:
+        amount = 0
+    if amount < ADVERTISER_MIN_FUNDING:
+        flash(f"Minimum funding is ₦{ADVERTISER_MIN_FUNDING:,}.", "error")
+        return redirect(url_for("business_wallet"))
+    if not FLW_SECRET_KEY:
+        flash("Flutterwave is not configured on the server.", "error")
+        return redirect(url_for("business_wallet"))
+    tx_ref = f"TASKORA-BAL-{user['id']}-{uuid.uuid4().hex[:16]}"
+    try:
+        result = flw_post("/payments", {
+            "tx_ref": tx_ref, "amount": amount, "currency": CURRENCY,
+            "redirect_url": f"{BASE_URL}/business/payment/wallet-callback",
+            "payment_options": "card,banktransfer,ussd",
+            "customer": {"email": user["email"], "name": user["full_name"], "phonenumber": user["phone"]},
+            "customizations": {"title": "TASKORA WORK Advertiser Wallet", "description": "Add campaign funds"},
+            "meta": {"taskora_type": "advertiser_wallet", "advertiser_id": user["id"]},
+        })
+        link = str((result.get("data") or {}).get("link") or "").strip()
+        if not link:
+            raise RuntimeError("Flutterwave did not return a checkout link.")
+        conn = db()
+        conn.execute("INSERT OR IGNORE INTO payment_events(tx_ref,user_id,event_type,amount,currency,raw_json,created_at) VALUES(?,?,?,?,?,?,?)", (tx_ref, user["id"], "business_wallet_funding_started", amount, CURRENCY, json.dumps(result), now()))
+        conn.commit(); conn.close()
+        return redirect(link)
+    except Exception as e:
+        flash(str(e), "error")
+        return redirect(url_for("business_wallet"))
+
+
+@app.route("/business/payment/wallet-callback")
+def business_wallet_callback():
+    status = str(request.args.get("status") or "").lower()
+    transaction_id = request.args.get("transaction_id") or request.args.get("transactionId")
+    if status != "successful" or not transaction_id:
+        flash("Payment was not completed.", "error")
+        return redirect(url_for("business_wallet"))
+    u = current_user()
+    if not u or str(u["role"] or "").lower() not in ("advertiser", "business"):
+        return redirect(url_for("business_login"))
+    try:
+        verified = flw_get(f"/transactions/{str(transaction_id).strip()}/verify")
+        tx = verified.get("data") or {}
+        if str(tx.get("status") or "").lower() != "successful":
+            raise RuntimeError("Payment is not successful.")
+        if str(tx.get("currency") or "").upper() != CURRENCY:
+            raise RuntimeError("Invalid payment currency.")
+        amount = int(float(tx.get("amount") or 0))
+        email = str((tx.get("customer") or {}).get("email") or "").strip().lower()
+        if email != str(u["email"] or "").strip().lower():
+            raise RuntimeError("Payment email does not match your advertiser account.")
+        provider_ref = str(tx.get("tx_ref") or "")
+        if not provider_ref.startswith("TASKORA-BAL-"):
+            raise RuntimeError("This payment is not a TASKORA wallet payment.")
+        conn = db()
+        used = conn.execute("SELECT id FROM payment_events WHERE transaction_id=? AND event_type='business_wallet_funding_verified' LIMIT 1", (str(transaction_id),)).fetchone()
+        if used:
+            conn.close(); flash("This wallet payment was already verified.", "success"); return redirect(url_for("business_wallet"))
+        conn.execute("INSERT OR IGNORE INTO payment_events(tx_ref,user_id,event_type,transaction_id,amount,currency,raw_json,created_at) VALUES(?,?,?,?,?,?,?,?)", (f"FLW-BAL-{transaction_id}", u["id"], "business_wallet_funding_verified", str(transaction_id), amount, CURRENCY, json.dumps(verified), now()))
+        _ensure_advertiser_wallet(conn, u["id"])
+        conn.execute("UPDATE advertiser_wallets SET balance=balance+?,updated_at=? WHERE user_id=?", (amount, now(), u["id"]))
+        _record_advertiser_tx(conn, u["id"], amount, f"TASKORA-DEPOSIT-{transaction_id}", "Advertiser wallet funding received", "funding")
+        conn.commit(); conn.close()
+        flash(f"₦{amount:,} added to your campaign wallet.", "success")
+    except Exception as e:
+        flash(str(e), "error")
+    return redirect(url_for("business_wallet"))
 
 
 @app.route("/business/transactions")
 def business_transactions():
-    user, response = _business_guard()
-    if response:
-        return response
-    return render_template("business/dashboard.html", user=user, **_advertiser_metrics(user["id"]))
+    return redirect(url_for("business_wallet"))
 
 
 @app.route("/business/submissions")
@@ -2236,13 +2755,9 @@ def business_submissions():
         return response
     conn = db()
     rows = conn.execute("""
-        SELECT s.*, t.title, t.reward, t.category, u.full_name, u.email
-        FROM submissions s
-        JOIN tasks t ON t.id=s.task_id
-        JOIN users u ON u.id=s.user_id
-        WHERE t.owner_user_id=?
-        ORDER BY s.id DESC
-        LIMIT 100
+        SELECT s.*, t.title, t.reward, t.category, t.status AS task_status, u.full_name, u.email
+        FROM submissions s JOIN tasks t ON t.id=s.task_id JOIN users u ON u.id=s.user_id
+        WHERE t.owner_user_id=? ORDER BY s.id DESC LIMIT 100
     """, (user["id"],)).fetchall()
     conn.close()
     return render_template("business/submissions.html", user=user, submissions=rows)
@@ -2253,4 +2768,82 @@ def business_analytics():
     user, response = _business_guard()
     if response:
         return response
-    return render_template("business/dashboard.html", user=user, **_advertiser_metrics(user["id"]))
+    return render_template("business/analytics.html", user=user, fee_percent=ADVERTISER_PLATFORM_FEE_PERCENT, **_advertiser_metrics(user["id"]))
+
+
+@app.route("/business/tasks/<int:task_id>/close", methods=["POST"])
+def business_close_task(task_id):
+    user, response = _business_guard()
+    if response:
+        return response
+    conn = db()
+    task = conn.execute("SELECT * FROM tasks WHERE id=? AND owner_user_id=?", (task_id, user["id"])).fetchone()
+    if not task:
+        conn.close(); flash("Campaign not found.", "error"); return redirect(url_for("business_dashboard"))
+    if task["status"] not in ("pending", "open"):
+        conn.close(); flash("This campaign cannot be closed at its current stage.", "error"); return redirect(url_for("business_dashboard"))
+    pending = conn.execute("SELECT COUNT(*) FROM submissions WHERE task_id=? AND status='pending'", (task_id,)).fetchone()[0]
+    if pending:
+        conn.close(); flash("This campaign has worker submissions waiting for Admin review. Wait until they are resolved before closing it.", "error"); return redirect(url_for("business_dashboard"))
+    returned = _release_task_reserve(conn, task, "Unused campaign funds returned after advertiser closed the campaign.")
+    conn.execute("UPDATE tasks SET status='closed' WHERE id=?", (task_id,))
+    conn.commit(); conn.close()
+    flash(f"Campaign closed. ₦{returned:,} unused funds returned to your advertiser wallet.", "success")
+    return redirect(url_for("business_dashboard"))
+
+
+# ---------------- ADMIN BUSINESS CONTROL ----------------
+
+@app.route("/admin/businesses")
+@admin_required
+def admin_businesses():
+    conn = db()
+    businesses = conn.execute("""
+        SELECT u.id,u.full_name,u.email,u.phone,u.created_at,
+               COALESCE(w.balance,0) AS wallet_balance, COALESCE(w.reserved_balance,0) AS reserved_balance,
+               COUNT(t.id) AS task_count
+        FROM users u
+        LEFT JOIN advertiser_wallets w ON w.user_id=u.id
+        LEFT JOIN tasks t ON t.owner_user_id=u.id
+        WHERE u.role IN ('advertiser','business')
+        GROUP BY u.id,u.full_name,u.email,u.phone,u.created_at,w.balance,w.reserved_balance
+        ORDER BY u.id DESC
+    """).fetchall()
+    conn.close()
+    return render_template("admin_businesses.html", businesses=businesses)
+
+
+@app.route("/admin/tasks/<int:task_id>/reject", methods=["POST"])
+@admin_required
+def admin_reject_advertiser_task(task_id):
+    conn = db()
+    task = conn.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
+    if not task or not task["owner_user_id"]:
+        conn.close(); flash("Advertiser campaign not found.", "error"); return redirect(url_for("admin_tasks"))
+    if task["status"] not in ("pending", "awaiting_payment"):
+        conn.close(); flash("This campaign cannot be rejected at its current stage.", "error"); return redirect(url_for("admin_tasks"))
+    note = request.form.get("note", "Campaign rejected by TASKORA admin.").strip()[:500]
+    if task["reserved_budget"]:
+        _release_task_reserve(conn, task, f"Campaign rejected by Admin: {note}")
+    conn.execute("UPDATE tasks SET status='rejected' WHERE id=?", (task_id,))
+    conn.commit(); conn.close()
+    flash("Advertiser campaign rejected. Any reserved unused funds were returned to the advertiser wallet.", "success")
+    return redirect(url_for("admin_tasks"))
+
+
+
+@app.route("/admin/tasks/<int:task_id>/close", methods=["POST"])
+@admin_required
+def admin_close_advertiser_task(task_id):
+    conn = db()
+    task = conn.execute("SELECT * FROM tasks WHERE id=? AND owner_user_id IS NOT NULL", (task_id,)).fetchone()
+    if not task:
+        conn.close(); flash("Advertiser campaign not found.", "error"); return redirect(url_for("admin_tasks"))
+    if task["status"] in ("completed", "refunded", "rejected"):
+        conn.close(); flash("Campaign is already closed.", "error"); return redirect(url_for("admin_tasks"))
+    returned = _release_task_reserve(conn, task, "Unused campaign funds returned after Admin closed the campaign.")
+    conn.execute("UPDATE tasks SET status='closed' WHERE id=?", (task_id,))
+    conn.commit(); conn.close()
+    flash(f"Campaign closed. ₦{returned:,} unused funds returned to advertiser wallet.", "success")
+    return redirect(url_for("admin_tasks"))
+

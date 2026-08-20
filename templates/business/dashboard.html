@@ -10,7 +10,8 @@
     <div class="business-stat"><span>Available Budget</span><strong>₦{{ "{:,.0f}".format(available_budget or 0) }}</strong><small>Ready for campaigns</small></div>
     <div class="business-stat"><span>Active Campaigns</span><strong>{{ active_campaigns or 0 }}</strong><small>Currently running</small></div>
     <div class="business-stat"><span>Total Reach</span><strong>{{ "{:,}".format(total_reach or 0) }}</strong><small>Workers reached</small></div>
-    <div class="business-stat"><span>Pending Reviews</span><strong>{{ pending_reviews or 0 }}</strong><small>Need review</small></div>
+    <div class="business-stat"><span>Pending Reviews</span><strong>{{ pending_reviews or 0 }}</strong><small>Need admin review</small></div>
+    <div class="business-stat"><span>Worker Rewards Approved</span><strong>₦{{ "{:,.0f}".format(approved_value or 0) }}</strong><small>Approved submissions</small></div>
   </div>
   <div class="business-grid">
     <section class="business-card">
@@ -27,8 +28,8 @@
   </div>
   <div class="business-grid lower">
     <section class="business-card"><div class="business-card-head"><div><span class="eyebrow">PERFORMANCE</span><h2>Campaign Overview</h2></div><a class="text-link" href="{{ url_for('business_analytics') }}">Analytics →</a></div><div class="business-progress"><div><span>Budget used</span><b>{{ budget_used_percent or 0 }}%</b></div><div class="progress-track"><i style="width:{{ budget_used_percent or 0 }}%"></i></div></div><div class="business-mini-grid"><div><span>Approved</span><b>{{ approved_submissions or 0 }}</b></div><div><span>Rejected</span><b>{{ rejected_submissions or 0 }}</b></div><div><span>Conversion</span><b>{{ conversion_rate or 0 }}%</b></div></div></section>
-    <section class="business-card"><span class="eyebrow">BILLING</span><h2>Campaign Wallet</h2><div class="billing-balance">₦{{ "{:,.0f}".format(available_budget or 0) }}</div><p class="muted">Funds are used for approved worker tasks.</p><div class="billing-actions"><a class="btn small" href="{{ url_for('business_wallet') }}">Manage Wallet</a><a class="btn secondary small" href="{{ url_for('business_transactions') }}">Transactions</a></div></section>
+    <section class="business-card"><span class="eyebrow">BILLING</span><h2>Campaign Wallet</h2><div class="billing-balance">₦{{ "{:,.0f}".format(available_budget or 0) }}</div><p class="muted">Worker rewards are reviewed by TASKORA admin. Approved submissions are credited to the worker account.</p><div class="billing-actions"><a class="btn small" href="{{ url_for('business_wallet') }}">Manage Wallet</a><a class="btn secondary small" href="{{ url_for('business_transactions') }}">Transactions</a></div></section>
   </div>
-  <section class="business-card business-trust"><div><span class="eyebrow">HOW IT WORKS</span><h2>Simple, transparent campaigns</h2></div><div class="business-steps"><div><b>01</b><span>Create a task</span></div><div><b>02</b><span>Fund campaign</span></div><div><b>03</b><span>Workers complete</span></div><div><b>04</b><span>Review proof & pay</span></div></div></section>
+  <section class="business-card business-trust"><div><span class="eyebrow">HOW IT WORKS</span><h2>Business → Admin → Worker</h2></div><div class="business-steps"><div><b>01</b><span>Business creates task</span></div><div><b>02</b><span>Admin reviews & publishes</span></div><div><b>03</b><span>Workers complete & submit proof</span></div><div><b>04</b><span>Admin reviews proof & credits worker</span></div></div></section>
 </div>
 {% endblock %}

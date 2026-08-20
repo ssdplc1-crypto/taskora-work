@@ -40,10 +40,16 @@
     <div><span>Submissions</span><strong>{{ t.submission_count or 0 }}</strong></div>
   </div>
 
-  <form class="task-row-delete" method="post" action="{{ url_for('admin_delete_task',task_id=t.id) }}"
-        onsubmit="return confirm('Delete this task?');">
-    <button class="btn danger small" type="submit">Delete</button>
-  </form>
+  <div class="task-row-delete" style="display:flex;gap:8px;align-items:center;">
+    {% if t.owner_user_id and t.status == 'pending' %}
+    <form method="post" action="{{ url_for('admin_approve_advertiser_task',task_id=t.id) }}" onsubmit="return confirm('Approve and publish this advertiser task?');">
+      <button class="btn small" type="submit">Approve</button>
+    </form>
+    {% endif %}
+    <form method="post" action="{{ url_for('admin_delete_task',task_id=t.id) }}" onsubmit="return confirm('Delete this task?');">
+      <button class="btn danger small" type="submit">Delete</button>
+    </form>
+  </div>
 </article>
 {% else %}
 <div class="empty">No tasks created yet.</div>

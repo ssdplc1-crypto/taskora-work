@@ -9,19 +9,21 @@
 </head>
 <body>
 <header class="topbar">
-  <a class="brand" href="{{ url_for('admin_dashboard') if current_user and current_user.role=='admin' else (url_for('dashboard') if current_user else url_for('index')) }}">
+  <a class="brand" href="{{ url_for('admin_dashboard') if current_user and current_user.role=='admin' else (url_for('business_dashboard') if current_user and current_user.role in ['advertiser','business'] else (url_for('dashboard') if current_user else url_for('index'))) }}">
     <span class="brandmark">T</span>TASKORA <b>WORK</b>
   </a>
   <nav>
     {% if current_user %}
       {% if current_user.role=='admin' %}
         <span class="role-badge">ADMIN</span>
+      {% elif current_user.role in ['advertiser','business'] %}
+        <span class="role-badge">ADVERTISER</span>
       {% else %}
         <a class="btn small" id="install-app" href="{{ url_for('dashboard') }}">Install App</a>
       {% endif %}
     {% else %}
-      <a class="btn small" href="{{ url_for('login') }}">Login</a>
-      <a class="btn small" href="{{ url_for('register') }}">Register</a>
+      <a class="btn small" href="{{ url_for('login') }}">Worker Login</a>
+      <a class="btn small" href="{{ url_for('register') }}">Worker Register</a>
     {% endif %}
   </nav>
 </header>
@@ -40,6 +42,14 @@
 <a class="{% if request.endpoint=='admin_users' %}active{% endif %}" href="{{ url_for('admin_users') }}"><span>●</span>Users</a>
 <a class="{% if request.endpoint=='admin_ai' %}active{% endif %}" href="{{ url_for('admin_ai') }}"><span>✦</span>AI</a>
 </nav>
+{% elif current_user and current_user.role in ['advertiser','business'] %}
+<nav class="bottom-nav" aria-label="Advertiser navigation">
+<a class="{% if request.endpoint in ['business_dashboard','business_tasks'] %}active{% endif %}" href="{{ url_for('business_dashboard') }}"><span>⌂</span>Home</a>
+<a class="{% if request.endpoint=='business_create_task' %}active{% endif %}" href="{{ url_for('business_create_task') }}"><span>＋</span>Create</a>
+<a class="{% if request.endpoint=='business_submissions' %}active{% endif %}" href="{{ url_for('business_submissions') }}"><span>▣</span>Proofs</a>
+<a class="{% if request.endpoint in ['business_wallet','business_transactions'] %}active{% endif %}" href="{{ url_for('business_wallet') }}"><span>₦</span>Wallet</a>
+<a class="{% if request.endpoint=='business_analytics' %}active{% endif %}" href="{{ url_for('business_analytics') }}"><span>◉</span>Analytics</a>
+</nav>
 {% elif current_user %}
 <nav class="bottom-nav" aria-label="Worker navigation">
 <a class="{% if request.endpoint=='dashboard' %}active{% endif %}" href="{{ url_for('dashboard') }}"><span>⌂</span>Home</a>
@@ -48,7 +58,7 @@
 <a class="{% if request.endpoint in ['profile','change_password'] %}active{% endif %}" href="{{ url_for('profile') }}"><span>◉</span>Profile</a>
 </nav>
 {% else %}
-<footer><div class="footer-links"><a href="{{ url_for('support') }}">Support</a><a href="{{ url_for('privacy') }}">Privacy Policy</a><a href="{{ url_for('terms') }}">Terms & Conditions</a></div></footer>
+<footer><div class="footer-links"><a href="{{ url_for('business_login') }}">Advertiser Login</a><a href="{{ url_for('business_register') }}">Advertiser Register</a><a href="{{ url_for('support') }}">Support</a><a href="{{ url_for('privacy') }}">Privacy Policy</a><a href="{{ url_for('terms') }}">Terms & Conditions</a></div></footer>
 {% endif %}
 <script>
 let deferredInstallPrompt;

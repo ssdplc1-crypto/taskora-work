@@ -3,8 +3,8 @@
 {% block content %}
 <div class="detail-main card">
   <span class="eyebrow">{{ task.category }}</span><h1>{{ task.title }}</h1><p class="lead">{{ task.description }}</p>
-  <div class="metric"><span>Reward</span><strong>₦{{ "{:,}".format(task.reward) }}</strong></div><div class="metric"><span>Slots</span><strong>{{ task.slots }}</strong></div>
-  {% if task.task_link %}<p><a class="btn ghost" href="{{ task.task_link }}" target="_blank" rel="noopener">Open {{ task.category }} task</a></p>{% endif %}
+  <div class="metric"><span>Reward</span><strong>₦{{ "{:,}".format(task.reward or 0) }}</strong></div><div class="metric"><span>Slots</span><strong>{{ task.slots or 0 }}</strong></div>
+  {% if task.task_link %}<p><a class="btn ghost" href="{{ task.task_link }}" target="_blank" rel="noopener">Open {{ task.category }} task ↗</a></p>{% endif %}
   {% if already %}<div class="notice">You already submitted this task.</div>
   {% elif user.activated %}
   <form method="post" action="{{ url_for('submit_task',task_id=task.id) }}" enctype="multipart/form-data">

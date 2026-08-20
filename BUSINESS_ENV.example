@@ -17,7 +17,3 @@ ADVERTISER_SUBMISSION_APPROVAL=admin
 # Required for AI
 # OPENAI_API_KEY=your_openai_api_key
 # OPENAI_MODEL=gpt-5.6-luna
-
-# Worker activation
-ACTIVATION_AMOUNT=3000
-# Card-only activation is enforced in app.py with payment_options=card

@@ -779,6 +779,16 @@ def reward_referrer_for_activation(conn, activated_user_id):
     return True
 
 
+def _public_base_url():
+    # Render forwards the original host/protocol. Prefer explicit BASE_URL when valid.
+    configured = BASE_URL.strip().rstrip("/")
+    if configured and not configured.startswith(("http://localhost", "http://127.0.0.1", "https://localhost", "https://127.0.0.1")):
+        return configured
+    proto = request.headers.get("X-Forwarded-Proto", request.scheme).split(",")[0].strip()
+    host = request.headers.get("X-Forwarded-Host", request.host).split(",")[0].strip()
+    return f"{proto}://{host}".rstrip("/")
+
+
 @app.route("/activate")
 @login_required
 def activate():
@@ -802,43 +812,22 @@ def activate_pay():
         return redirect(url_for("activate"))
 
     tx_ref = f"TASKORA-ACT-{u['id']}-{uuid.uuid4().hex[:16]}"
-
-    # Always send a public HTTPS callback URL in production. If BASE_URL was
-    # accidentally left at its local-development default, use the current
-    # Render request host instead of sending localhost to Flutterwave.
-    configured_base = str(BASE_URL or "").strip().rstrip("/")
-    if not configured_base or "localhost" in configured_base or "127.0.0.1" in configured_base:
-        public_base = request.url_root.rstrip("/")
-    else:
-        public_base = configured_base
-    redirect_url = f"{public_base}/activate/callback"
-
-    customer = {
-        "email": str(u["email"] or "").strip(),
-        "name": str(u["full_name"] or "TASKORA User").strip(),
-    }
-    if str(u["phone"] or "").strip():
-        customer["phonenumber"] = str(u["phone"]).strip()
+    redirect_url = f"{_public_base_url()}/activate/callback"
 
     payload = {
         "tx_ref": tx_ref,
         "amount": ACTIVATION_FEE,
         "currency": CURRENCY,
         "redirect_url": redirect_url,
-        # ACTIVATION IS CARD ONLY. Do not add banktransfer, ussd, account, etc.
         "payment_options": "card",
-        "customer": customer,
+        "customer": {
+            "email": u["email"],
+            "name": u["full_name"],
+            "phonenumber": u["phone"],
+        },
         "customizations": {
             "title": "TASKORA WORK Activation",
-            "description": "Pay ₦3,000 by card to activate your Worker account.",
-        },
-        "configurations": {
-            "session_duration": 30,
-            "max_retry_attempt": 5,
-        },
-        "meta": {
-            "taskora_user_id": str(u["id"]),
-            "purpose": "worker_activation",
+            "description": "TASKORA WORK account activation",
         },
     }
 
@@ -846,9 +835,12 @@ def activate_pay():
         result = flw_post("/payments", payload)
         checkout_link = str((result.get("data") or {}).get("link") or "").strip()
         if not checkout_link:
-            raise RuntimeError("Flutterwave did not return a checkout link.")
+            app.logger.error("Flutterwave activation response missing checkout link: %r", result)
+            raise RuntimeError("Flutterwave did not return a checkout link. Check Render logs for the Flutterwave response.")
+        app.logger.info("Flutterwave activation checkout created: tx_ref=%s", tx_ref)
     except Exception as e:
-        flash(str(e), "error")
+        app.logger.exception("Flutterwave activation checkout failed: tx_ref=%s", tx_ref)
+        flash(f"Activation payment could not start: {e}", "error")
         return redirect(url_for("activate"))
 
     conn = db()

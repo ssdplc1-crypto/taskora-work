@@ -7,8 +7,9 @@
   <div class="price">₦3,000</div>
   <p>The activation fee unlocks task participation, earnings and withdrawal features. It is <strong>not an investment, deposit or guaranteed-income payment.</strong></p>
   <ul class="checklist"><li>Access available tasks</li><li>Submit completed work</li><li>Track verified earnings</li><li>Request withdrawals from ₦2,000</li></ul>
-  <form method="post" action="{{ url_for('activate_pay') }}"><button class="btn full" type="submit">Pay ₦3,000 by Card →</button></form>
-  <div class="payment-method-note" style="margin-top:14px"><b>Payment method</b><span>💳 Card payment only</span></div>
-  <p class="muted">Your TASKORA WORK activation is processed through Flutterwave. Only card payment is enabled for this activation.</p>
+  {% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}<div class="alert {{ category }}" style="margin:14px 0;text-align:left;">{{ message }}</div>{% endfor %}{% endwith %}
+  <form method="post" action="{{ url_for('activate_pay') }}"><button class="btn full" type="submit">Continue to Secure Payment →</button></form>
+  <div class="payment-method-note" style="margin-top:14px"><b>Payment method</b><span>Card only</span></div>
+  <p class="muted">You will be redirected to Flutterwave secure checkout to pay with your card.</p>
 </div>
 {% endblock %}

@@ -527,6 +527,12 @@ def referral_link(referral_code):
     return redirect(url_for("register"))
 
 
+@app.route("/account-type")
+def account_type():
+    """Let a new user choose a dedicated Worker or Business account."""
+    return render_template("account_type.html")
+
+
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -1058,6 +1064,15 @@ def flutterwave_webhook():
 @login_required
 def tasks():
     u = current_user()
+    if str(u["role"] or "").lower() != "worker":
+        if str(u["role"] or "").lower() in ("advertiser", "business"):
+            return redirect(url_for("business_dashboard"))
+        if str(u["role"] or "").lower() == "admin":
+            return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("dashboard"))
+    if not u["activated"]:
+        flash("Activate your worker account before opening tasks.", "error")
+        return redirect(url_for("activate"))
     conn = db()
     rows = conn.execute("SELECT * FROM tasks WHERE status='open' ORDER BY id DESC").fetchall()
     conn.close()
@@ -1068,6 +1083,15 @@ def tasks():
 @login_required
 def task_detail(task_id):
     u = current_user()
+    if str(u["role"] or "").lower() != "worker":
+        if str(u["role"] or "").lower() in ("advertiser", "business"):
+            return redirect(url_for("business_dashboard"))
+        if str(u["role"] or "").lower() == "admin":
+            return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("dashboard"))
+    if not u["activated"]:
+        flash("Activate your worker account before opening this task.", "error")
+        return redirect(url_for("activate"))
     conn = db()
     task = conn.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     already = conn.execute(
@@ -1405,11 +1429,14 @@ def admin_tasks():
     tasks = conn.execute("""
         SELECT
             t.*,
+            owner.full_name AS owner_name,
+            owner.email AS owner_email,
             COUNT(s.id) AS submission_count,
             SUM(CASE WHEN s.status='pending' THEN 1 ELSE 0 END) AS pending_submissions
         FROM tasks t
+        LEFT JOIN users owner ON owner.id=t.owner_user_id
         LEFT JOIN submissions s ON s.task_id=t.id
-        GROUP BY t.id
+        GROUP BY t.id, owner.full_name, owner.email
         ORDER BY t.id DESC
     """).fetchall()
     conn.close()
@@ -1684,7 +1711,13 @@ def admin_ai():
                 )
                 answer = response.output_text
             except Exception as e:
-                flash(f"TASKORA AI error: {str(e)}", "error")
+                error_text = str(e)
+                if "billing_not_active" in error_text or "account is not active" in error_text.lower():
+                    flash("TASKORA AI is connected, but OpenAI API billing is not active. Add/activate an API billing method on the OpenAI Platform, then try again.", "error")
+                elif "model" in error_text.lower() and "not found" in error_text.lower():
+                    flash(f"TASKORA AI model '{OPENAI_MODEL}' is not available for this API project. Set OPENAI_MODEL to an available model.", "error")
+                else:
+                    flash(f"TASKORA AI error: {error_text}", "error")
     return render_template(
         "admin_ai.html",
         answer=answer,
@@ -2033,6 +2066,18 @@ def _advertiser_metrics(user_id):
         SELECT COUNT(*) FROM submissions s JOIN tasks t ON t.id=s.task_id
         WHERE t.owner_user_id=? AND s.status='rejected'
     """, (user_id,)).fetchone()[0]
+    pending_value = conn.execute("""
+        SELECT COALESCE(SUM(t.reward),0) FROM submissions s JOIN tasks t ON t.id=s.task_id
+        WHERE t.owner_user_id=? AND s.status='pending'
+    """, (user_id,)).fetchone()[0]
+    approved_value = conn.execute("""
+        SELECT COALESCE(SUM(t.reward),0) FROM submissions s JOIN tasks t ON t.id=s.task_id
+        WHERE t.owner_user_id=? AND s.status='approved'
+    """, (user_id,)).fetchone()[0]
+    rejected_value = conn.execute("""
+        SELECT COALESCE(SUM(t.reward),0) FROM submissions s JOIN tasks t ON t.id=s.task_id
+        WHERE t.owner_user_id=? AND s.status='rejected'
+    """, (user_id,)).fetchone()[0]
     reach = conn.execute(
         "SELECT COALESCE(SUM(slots),0) FROM tasks WHERE owner_user_id=?", (user_id,)
     ).fetchone()[0]
@@ -2052,6 +2097,9 @@ def _advertiser_metrics(user_id):
         "approved_submissions": approved,
         "rejected_submissions": rejected,
         "conversion_rate": conversion,
+        "pending_value": pending_value,
+        "approved_value": approved_value,
+        "rejected_value": rejected_value,
     }
 
 

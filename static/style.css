@@ -1598,3 +1598,47 @@ body.proof-modal-open{overflow:hidden}
 .account-choice{padding:34px 0 80px}.account-choice-head{text-align:center;max-width:760px;margin:0 auto 28px}.account-choice-head h1{margin:8px 0 10px}.account-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;max-width:980px;margin:0 auto}.account-choice-card{display:block;padding:28px;border:1px solid #e4eceb;border-radius:26px;background:#fff;box-shadow:0 12px 35px rgba(15,118,110,.08);text-decoration:none;color:inherit}.account-choice-card:hover{transform:translateY(-2px)}.account-choice-icon{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:#e7f5f3;color:#0f766e;font-size:26px;font-weight:800;margin-bottom:20px}.account-choice-card h2{margin:8px 0}.account-choice-card p{color:#667575;line-height:1.65;min-height:78px}.account-choice-card small{display:block;text-align:center;margin-top:12px;color:#6b7777}.account-choice-card .btn{margin-top:8px}.business-choice .account-choice-icon{background:#eef5ff;color:#2563eb}
 @media (max-width:760px){.account-choice-grid{grid-template-columns:1fr}.account-choice-card p{min-height:auto}}
 .business-billing-banner{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:16px}.business-billing-banner h2{margin:4px 0}.business-budget-breakdown{margin-top:14px;border:1px solid var(--line);border-radius:14px;overflow:hidden}.business-budget-breakdown>div{display:flex;justify-content:space-between;gap:15px;padding:12px 14px;border-bottom:1px solid var(--line)}.business-budget-breakdown>div:last-child{border-bottom:0}.business-budget-breakdown span{color:var(--muted);font-size:11px}.business-budget-breakdown b{font-size:13px}.business-budget-breakdown .total{background:var(--soft)}.business-budget-breakdown .total b{font-size:18px;color:var(--brand)}.small-note{font-size:11px}.payment-card{max-width:720px;margin:0 auto}.payment-card h1{margin:6px 0 8px}.payment-method-note{display:flex;justify-content:space-between;gap:12px;padding:14px;margin:16px 0;border-radius:12px;background:var(--soft);font-size:12px}.payment-method-note span{color:var(--muted)}.text-danger{color:#b42318!important}@media(max-width:700px){.business-billing-banner{flex-direction:column;align-items:flex-start}.payment-method-note{flex-direction:column}.business-billing-banner .btn{width:100%}}
+
+/* =========================================================
+   WORKER DASHBOARD — CAMPAIGN STYLE CARDS
+========================================================= */
+.worker-head{align-items:center}
+.worker-active-badge{display:inline-flex;align-items:center;gap:6px;padding:10px 13px;border-radius:999px;background:#eaf8f2;color:#137a3b;border:1px solid #cbe9d8;font-size:10px;font-weight:900;letter-spacing:.8px;white-space:nowrap}
+.worker-lock-notice{margin-top:8px}
+.worker-stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px;margin:22px 0 30px}
+.worker-stat-card{background:var(--white);border:1px solid var(--line);border-radius:17px;padding:20px;box-shadow:var(--shadow);min-width:0}
+.worker-stat-card span{display:block;color:var(--muted);font-size:12px;margin-bottom:11px}
+.worker-stat-card strong{display:block;font-size:27px;line-height:1.05;letter-spacing:-.6px;color:var(--ink)}
+.worker-stat-card small{display:block;color:var(--muted);font-size:11px;margin-top:10px}
+.worker-stat-primary{border-color:#bfe1dd;background:linear-gradient(145deg,#f4fbfa,#fff)}
+.worker-stat-primary strong{color:var(--brand)}
+.worker-section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px}
+.worker-section-head h2{margin-bottom:4px}
+.worker-task-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.worker-task-card{display:block;background:var(--white);border:1px solid var(--line);border-radius:18px;padding:19px;color:inherit;box-shadow:var(--shadow);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;min-width:0}
+.worker-task-card:hover{transform:translateY(-2px);border-color:#9bcfc9;box-shadow:0 16px 36px rgba(16,32,31,.09)}
+.worker-task-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.worker-task-card h3{font-size:18px;margin:12px 0 6px;line-height:1.2}
+.worker-task-card p{font-size:12px;line-height:1.6;min-height:38px;margin:0;color:var(--muted)}
+.worker-task-metrics{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:16px}
+.worker-task-metrics div{padding:13px 8px}
+.worker-task-metrics div+div{border-left:1px solid var(--line)}
+.worker-task-metrics span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px}
+.worker-task-metrics strong{font-size:17px;color:var(--brand)}
+.worker-task-action{display:flex;align-items:center;justify-content:space-between;margin-top:13px;color:var(--brand);font-size:12px;font-weight:850}
+.worker-task-action b{font-size:18px}
+.worker-task-locked{position:relative;opacity:.82}
+.worker-task-locked:hover{transform:none;border-color:var(--line)}
+.worker-lock{font-size:10px;font-weight:850;color:#8a5b00;background:#fff7e6;border:1px solid #f1dfb2;padding:4px 7px;border-radius:999px}
+.worker-empty-card{grid-column:1/-1;text-align:center;padding:42px 20px;background:var(--white);border:1px dashed #c9d8d6;border-radius:18px}
+.worker-empty-icon{width:48px;height:48px;margin:0 auto 12px;border-radius:50%;display:grid;place-items:center;background:var(--soft);color:var(--brand);font-size:22px;font-weight:900}
+.worker-empty-card h3{margin:0 0 5px}
+.worker-empty-card p{margin:0;color:var(--muted);font-size:12px}
+.worker-wallet-strip{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:20px;background:#f7fbfa;border:1px solid var(--line);border-radius:18px;padding:20px}
+.worker-wallet-strip h2{margin:5px 0 0;font-size:20px}
+.worker-wallet-values{display:flex;gap:24px;flex-wrap:wrap}
+.worker-wallet-values div{min-width:105px}
+.worker-wallet-values span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.7px}
+.worker-wallet-values strong{display:block;font-size:16px;margin-top:4px}
+@media(max-width:850px){.worker-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.worker-wallet-strip{grid-template-columns:1fr}.worker-wallet-values{display:grid;grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.worker-section-head{align-items:flex-start}.worker-task-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.worker-task-card{padding:13px;border-radius:15px}.worker-task-card h3{font-size:15px}.worker-task-card p{font-size:11px;min-height:52px}.worker-task-metrics{margin-top:12px}.worker-task-metrics div{padding:10px 5px}.worker-task-metrics strong{font-size:14px}.worker-task-action{font-size:10px}.worker-wallet-values{grid-template-columns:1fr 1fr}.worker-stat-card{padding:15px}.worker-stat-card strong{font-size:23px}}

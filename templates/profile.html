@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Profile — TASKORA WORK{% endblock %}
 {% block content %}
-<div class="page-head"><div><span class="eyebrow">PROFILE</span><h1>{{ user.full_name or "Your Profile" }}</h1><p>{{ user.email or "No email" }}{% if user.phone %} · {{ user.phone }}{% endif %}</p><a class="profile-link" href="{{ url_for("business_dashboard") }}"><span class="profile-icon">▣</span><span>Business Dashboard</span></a></div></div>
+<div class="page-head"><div><span class="eyebrow">PROFILE</span><h1>{{ user.full_name or "Your Profile" }}</h1><p>{{ user.email or "No email" }}{% if user.phone %} · {{ user.phone }}{% endif %}</p></div></div>
 <div class="profile-menu card">
   <a class="profile-menu-item" href="{{ url_for('change_password') }}"><span class="menu-icon blue">⌁</span><div><b>Change Password</b><small>Update your account password</small></div><span>›</span></a>
   <a class="profile-menu-item" href="{{ url_for('support') }}"><span class="menu-icon blue">?</span><div><b>Support</b><small>Get help with TASKORA WORK</small></div><span>›</span></a>

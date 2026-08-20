@@ -28,10 +28,10 @@
   <div class="task-row-info">
     <div class="task-row-top">
       <span class="pill">{{ t.category }}</span>
-      <span class="task-status">{{ t.status|title }}</span>
+      <span class="task-status">{{ t.status|title }}</span>{% if t.owner_user_id %}<span class="pill">BUSINESS</span>{% endif %}
     </div>
     <h3>{{ t.title }}</h3>
-    <p>{{ t.description }}</p>
+    <p>{{ t.description }}</p>{% if t.owner_user_id %}<small class="muted">Business: {{ t.owner_name or "Advertiser" }}{% if t.owner_email %} · {{ t.owner_email }}{% endif %}</small>{% else %}<small class="muted">Source: TASKORA Admin</small>{% endif %}
   </div>
 
   <div class="task-row-meta">

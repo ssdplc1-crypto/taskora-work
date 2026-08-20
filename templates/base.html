@@ -22,8 +22,8 @@
         <a class="btn small" id="install-app" href="{{ url_for('dashboard') }}">Install App</a>
       {% endif %}
     {% else %}
-      <a class="btn small" href="{{ url_for('login') }}">Worker Login</a>
-      <a class="btn small" href="{{ url_for('register') }}">Worker Register</a>
+      <a class="btn small" href="{{ url_for('login') }}">Login</a>
+      <a class="btn small" href="{{ url_for('account_type') }}">Create Account</a>
     {% endif %}
   </nav>
 </header>
@@ -58,7 +58,7 @@
 <a class="{% if request.endpoint in ['profile','change_password'] %}active{% endif %}" href="{{ url_for('profile') }}"><span>◉</span>Profile</a>
 </nav>
 {% else %}
-<footer><div class="footer-links"><a href="{{ url_for('business_login') }}">Advertiser Login</a><a href="{{ url_for('business_register') }}">Advertiser Register</a><a href="{{ url_for('support') }}">Support</a><a href="{{ url_for('privacy') }}">Privacy Policy</a><a href="{{ url_for('terms') }}">Terms & Conditions</a></div></footer>
+<footer><div class="footer-links"><a href="{{ url_for('account_type') }}">Create Account</a><a href="{{ url_for('business_login') }}">Business Login</a><a href="{{ url_for('support') }}">Support</a><a href="{{ url_for('privacy') }}">Privacy Policy</a><a href="{{ url_for('terms') }}">Terms & Conditions</a></div></footer>
 {% endif %}
 <script>
 let deferredInstallPrompt;

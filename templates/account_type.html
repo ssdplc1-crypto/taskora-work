@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Choose Account — TASKORA WORK{% endblock %}
+{% block content %}
+<section class="account-choice">
+  <div class="account-choice-head">
+    <span class="eyebrow">WELCOME TO TASKORA WORK</span>
+    <h1>Choose how you want to use TASKORA</h1>
+    <p class="muted">Worker and Business accounts are separate. Choose one before creating your account.</p>
+  </div>
+  <div class="account-choice-grid">
+    <a class="account-choice-card" href="{{ url_for('register') }}">
+      <div class="account-choice-icon">✓</div>
+      <span class="eyebrow">WORKER</span>
+      <h2>Earn by completing tasks</h2>
+      <p>Activate your worker account, complete verified tasks, earn rewards and request withdrawals.</p>
+      <span class="btn full">Create Worker Account →</span>
+      <small>Already a worker? <b>Login</b></small>
+    </a>
+    <a class="account-choice-card business-choice" href="{{ url_for('business_register') }}">
+      <div class="account-choice-icon">▣</div>
+      <span class="eyebrow">BUSINESS</span>
+      <h2>Publish tasks to workers</h2>
+      <p>Create campaigns, submit tasks for admin approval, monitor worker submissions and track campaign performance.</p>
+      <span class="btn full business-primary">Create Business Account →</span>
+      <small>Already a business? <b>Login</b></small>
+    </a>
+  </div>
+</section>
+{% endblock %}

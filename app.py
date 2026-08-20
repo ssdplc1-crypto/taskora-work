@@ -45,6 +45,10 @@ app.config["SESSION_COOKIE_SECURE"] = os.environ.get("COOKIE_SECURE", "0") == "1
 
 FLW_SECRET_KEY = os.environ.get("FLW_SECRET_KEY", "")
 FLW_WEBHOOK_HASH = os.environ.get("FLW_WEBHOOK_HASH", "")
+FLW_PAYMENT_OPTIONS = os.environ.get(
+    "FLW_PAYMENT_OPTIONS",
+    "card, banktransfer, ussd, account, internetbanking, nqr, enaira, opay",
+)
 BASE_URL = os.environ.get("BASE_URL", "http://localhost:5000").rstrip("/")
 ACTIVATION_FEE = int(os.environ.get("ACTIVATION_AMOUNT", "3000"))
 MIN_WITHDRAWAL = int(os.environ.get("MINIMUM_WITHDRAWAL", "2000"))
@@ -805,7 +809,7 @@ def activate_pay():
         "amount": ACTIVATION_FEE,
         "currency": CURRENCY,
         "redirect_url": redirect_url,
-        "payment_options": "card,banktransfer,ussd",
+        "payment_options": "card",
         "customer": {
             "email": u["email"],
             "name": u["full_name"],
@@ -2582,7 +2586,8 @@ def business_fund_task(task_id):
             "amount": int(task["total_budget"]),
             "currency": CURRENCY,
             "redirect_url": redirect_url,
-            "payment_options": "card,banktransfer,ussd",
+            "payment_options": FLW_PAYMENT_OPTIONS,
+        "bank_transfer_options": {"expires": 3600},
             "customer": {"email": user["email"], "name": user["full_name"], "phonenumber": user["phone"]},
             "customizations": {"title": "TASKORA WORK Campaign Funding", "description": f"Fund campaign: {task['title']}"},
             "meta": {"taskora_type": "advertiser_campaign", "task_id": task_id, "advertiser_id": user["id"]},
@@ -2711,7 +2716,8 @@ def business_wallet_fund():
         result = flw_post("/payments", {
             "tx_ref": tx_ref, "amount": amount, "currency": CURRENCY,
             "redirect_url": f"{BASE_URL}/business/payment/wallet-callback",
-            "payment_options": "card,banktransfer,ussd",
+            "payment_options": FLW_PAYMENT_OPTIONS,
+        "bank_transfer_options": {"expires": 3600},
             "customer": {"email": user["email"], "name": user["full_name"], "phonenumber": user["phone"]},
             "customizations": {"title": "TASKORA WORK Advertiser Wallet", "description": "Add campaign funds"},
             "meta": {"taskora_type": "advertiser_wallet", "advertiser_id": user["id"]},

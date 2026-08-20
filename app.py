@@ -802,22 +802,43 @@ def activate_pay():
         return redirect(url_for("activate"))
 
     tx_ref = f"TASKORA-ACT-{u['id']}-{uuid.uuid4().hex[:16]}"
-    redirect_url = f"{BASE_URL}/activate/callback"
+
+    # Always send a public HTTPS callback URL in production. If BASE_URL was
+    # accidentally left at its local-development default, use the current
+    # Render request host instead of sending localhost to Flutterwave.
+    configured_base = str(BASE_URL or "").strip().rstrip("/")
+    if not configured_base or "localhost" in configured_base or "127.0.0.1" in configured_base:
+        public_base = request.url_root.rstrip("/")
+    else:
+        public_base = configured_base
+    redirect_url = f"{public_base}/activate/callback"
+
+    customer = {
+        "email": str(u["email"] or "").strip(),
+        "name": str(u["full_name"] or "TASKORA User").strip(),
+    }
+    if str(u["phone"] or "").strip():
+        customer["phonenumber"] = str(u["phone"]).strip()
 
     payload = {
         "tx_ref": tx_ref,
         "amount": ACTIVATION_FEE,
         "currency": CURRENCY,
         "redirect_url": redirect_url,
+        # ACTIVATION IS CARD ONLY. Do not add banktransfer, ussd, account, etc.
         "payment_options": "card",
-        "customer": {
-            "email": u["email"],
-            "name": u["full_name"],
-            "phonenumber": u["phone"],
-        },
+        "customer": customer,
         "customizations": {
             "title": "TASKORA WORK Activation",
-            "description": "TASKORA WORK account activation",
+            "description": "Pay ₦3,000 by card to activate your Worker account.",
+        },
+        "configurations": {
+            "session_duration": 30,
+            "max_retry_attempt": 5,
+        },
+        "meta": {
+            "taskora_user_id": str(u["id"]),
+            "purpose": "worker_activation",
         },
     }
 

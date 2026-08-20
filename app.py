@@ -291,6 +291,48 @@ def init_db():
             ("TASKORA Admin", "admin@taskora.local", "0000000000",
              generate_password_hash(os.environ.get("ADMIN_PASSWORD", "ChangeMe123!")), "admin", 1, now())
         )
+    # Backward-compatible task migrations. Older TASKORA databases may have
+    # been created before task_link/status/difficulty/slots were added.
+    # Without these migrations, /tasks/<id> and admin task pages can return 500.
+    if conn.is_postgres:
+        for statement in (
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS task_link TEXT",
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS deadline TEXT",
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS slots INTEGER NOT NULL DEFAULT 1",
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS difficulty TEXT NOT NULL DEFAULT 'Beginner'",
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'open'",
+            "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS created_at TEXT",
+        ):
+            conn.execute(statement)
+    else:
+        task_columns = {row[1] for row in conn.execute("PRAGMA table_info(tasks)").fetchall()}
+        task_migrations = {
+            "task_link": "ALTER TABLE tasks ADD COLUMN task_link TEXT",
+            "deadline": "ALTER TABLE tasks ADD COLUMN deadline TEXT",
+            "slots": "ALTER TABLE tasks ADD COLUMN slots INTEGER NOT NULL DEFAULT 1",
+            "difficulty": "ALTER TABLE tasks ADD COLUMN difficulty TEXT NOT NULL DEFAULT 'Beginner'",
+            "status": "ALTER TABLE tasks ADD COLUMN status TEXT NOT NULL DEFAULT 'open'",
+            "created_at": "ALTER TABLE tasks ADD COLUMN created_at TEXT",
+        }
+        for column, statement in task_migrations.items():
+            if column not in task_columns:
+                conn.execute(statement)
+
+    # Advertiser ownership migration. Existing admin-created tasks remain unowned;
+    # advertiser-created tasks are always tied to the advertiser user id.
+    if conn.is_postgres:
+        conn.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS owner_user_id BIGINT")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_tasks_owner_user ON tasks(owner_user_id)")
+    else:
+        task_columns = {row[1] for row in conn.execute("PRAGMA table_info(tasks)").fetchall()}
+        if "owner_user_id" not in task_columns:
+            conn.execute("ALTER TABLE tasks ADD COLUMN owner_user_id INTEGER")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_tasks_owner_user ON tasks(owner_user_id)")
+
+    conn.execute("UPDATE tasks SET status='open' WHERE status IS NULL OR status=''")
+    conn.execute("UPDATE tasks SET difficulty='Beginner' WHERE difficulty IS NULL OR difficulty=''")
+    conn.execute("UPDATE tasks SET slots=1 WHERE slots IS NULL OR slots < 1")
+
     # Referral migrations: preserve existing users and give each a stable code.
     if conn.is_postgres:
         conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT")
@@ -543,7 +585,12 @@ def login():
         conn.close()
         if user and check_password_hash(user["password_hash"], password):
             session["user_id"] = user["id"]
-            return redirect(url_for("admin_dashboard") if user["role"] == "admin" else url_for("dashboard"))
+            role = str(user["role"] or "").lower()
+            if role == "admin":
+                return redirect(url_for("admin_dashboard"))
+            if role in ("advertiser", "business"):
+                return redirect(url_for("business_dashboard"))
+            return redirect(url_for("dashboard"))
         flash("Invalid email or password.", "error")
     return render_template("login.html")
 
@@ -1031,7 +1078,7 @@ def task_detail(task_id):
     if not task:
         flash("Task not found.", "error")
         return redirect(url_for("tasks"))
-    return render_template("task_detail.html", task=task, already=already)
+    return render_template("task_detail.html", task=task, already=already, user=u)
 @app.route("/tasks/<int:task_id>/submit", methods=["POST"])
 @login_required
 def submit_task(task_id):
@@ -1367,6 +1414,29 @@ def admin_tasks():
     """).fetchall()
     conn.close()
     return render_template("admin_tasks.html", tasks=tasks)
+
+
+@app.route("/admin/tasks/<int:task_id>/approve", methods=["POST"])
+@admin_required
+def admin_approve_advertiser_task(task_id):
+    conn = db()
+    try:
+        task = conn.execute("SELECT id, title, status, owner_user_id FROM tasks WHERE id=?", (task_id,)).fetchone()
+        if not task:
+            flash("Task not found.", "error")
+            return redirect(url_for("admin_tasks"))
+        if not task["owner_user_id"]:
+            flash("This is an admin-created task; no advertiser approval is needed.", "info")
+            return redirect(url_for("admin_tasks"))
+        conn.execute("UPDATE tasks SET status='open' WHERE id=?", (task_id,))
+        conn.commit()
+        flash("Advertiser task approved and published to workers.", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Could not approve task: {e}", "error")
+    finally:
+        conn.close()
+    return redirect(url_for("admin_tasks"))
 
 
 @app.route("/admin/tasks/<int:task_id>/delete", methods=["POST"])
@@ -1933,34 +2003,118 @@ if __name__ == "__main__":
 
 # ---------------- BUSINESS / ADVERTISER ----------------
 def _business_guard():
-    """Central permission guard for advertiser routes."""
-    user = getattr(g, "user", None)
+    """Allow only a dedicated advertiser/business account into business routes."""
+    user = current_user()
     if not user:
-        return None, redirect(url_for("login"))
-    role = str(getattr(user, "role", "") or "").lower()
+        return None, redirect(url_for("business_login"))
+    role = str(user["role"] or "").lower()
     if role not in ("business", "advertiser"):
+        if role == "admin":
+            return None, redirect(url_for("admin_dashboard"))
         return None, redirect(url_for("dashboard"))
     return user, None
+
+
+def _advertiser_metrics(user_id):
+    conn = db()
+    tasks = conn.execute(
+        "SELECT * FROM tasks WHERE owner_user_id=? ORDER BY id DESC", (user_id,)
+    ).fetchall()
+    pending_reviews = conn.execute("""
+        SELECT COUNT(*) FROM submissions s
+        JOIN tasks t ON t.id=s.task_id
+        WHERE t.owner_user_id=? AND s.status='pending'
+    """, (user_id,)).fetchone()[0]
+    approved = conn.execute("""
+        SELECT COUNT(*) FROM submissions s JOIN tasks t ON t.id=s.task_id
+        WHERE t.owner_user_id=? AND s.status='approved'
+    """, (user_id,)).fetchone()[0]
+    rejected = conn.execute("""
+        SELECT COUNT(*) FROM submissions s JOIN tasks t ON t.id=s.task_id
+        WHERE t.owner_user_id=? AND s.status='rejected'
+    """, (user_id,)).fetchone()[0]
+    reach = conn.execute(
+        "SELECT COALESCE(SUM(slots),0) FROM tasks WHERE owner_user_id=?", (user_id,)
+    ).fetchone()[0]
+    active = conn.execute(
+        "SELECT COUNT(*) FROM tasks WHERE owner_user_id=? AND status='open'", (user_id,)
+    ).fetchone()[0]
+    conn.close()
+    total_submissions = approved + rejected + pending_reviews
+    conversion = round((approved / total_submissions) * 100, 1) if total_submissions else 0
+    return {
+        "tasks": tasks,
+        "available_budget": 0,
+        "active_campaigns": active,
+        "total_reach": reach,
+        "pending_reviews": pending_reviews,
+        "budget_used_percent": 0,
+        "approved_submissions": approved,
+        "rejected_submissions": rejected,
+        "conversion_rate": conversion,
+    }
+
+
+@app.route("/business/register", methods=["GET", "POST"])
+def business_register():
+    if request.method == "POST":
+        business_name = request.form.get("business_name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        phone = request.form.get("phone", "").strip()
+        password = request.form.get("password", "")
+        if len(business_name) < 2 or not email or len(phone) < 7 or len(password) < 8:
+            flash("Fill all fields correctly. Password must be at least 8 characters.", "error")
+            return render_template("business/register.html")
+        conn = db()
+        try:
+            code = None
+            alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+            for _ in range(20):
+                candidate = "ADV-" + "".join(secrets.choice(alphabet) for _ in range(8))
+                if not conn.execute("SELECT 1 FROM users WHERE referral_code=?", (candidate,)).fetchone():
+                    code = candidate
+                    break
+            conn.execute(
+                "INSERT INTO users(full_name,email,phone,password_hash,role,activated,referral_code,created_at) VALUES(?,?,?,?,?,?,?,?)",
+                (business_name, email, phone, generate_password_hash(password), "advertiser", 1, code, now()),
+            )
+            conn.commit()
+            user = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+            session.clear()
+            session["user_id"] = user["id"]
+            return redirect(url_for("business_dashboard"))
+        except Exception:
+            conn.rollback()
+            flash("Email or phone number is already registered.", "error")
+            return render_template("business/register.html")
+        finally:
+            conn.close()
+    return render_template("business/register.html")
+
+
+@app.route("/business/login", methods=["GET", "POST"])
+def business_login():
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        conn = db()
+        user = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+        conn.close()
+        if user and str(user["role"] or "").lower() in ("advertiser", "business") and check_password_hash(user["password_hash"], password):
+            session.clear()
+            session["user_id"] = user["id"]
+            return redirect(url_for("business_dashboard"))
+        flash("Invalid advertiser email or password.", "error")
+    return render_template("business/login.html")
+
 
 @app.route("/business/dashboard")
 def business_dashboard():
     user, response = _business_guard()
     if response:
         return response
-    # Route is intentionally data-safe: template can be wired to the project's
-    # existing task model without exposing another advertiser's records.
-    return render_template(
-        "business/dashboard.html",
-        tasks=[],
-        available_budget=0,
-        active_campaigns=0,
-        total_reach=0,
-        pending_reviews=0,
-        budget_used_percent=0,
-        approved_submissions=0,
-        rejected_submissions=0,
-        conversion_rate=0,
-    )
+    return render_template("business/dashboard.html", user=user, **_advertiser_metrics(user["id"]))
+
 
 @app.route("/business/tasks/new", methods=["GET", "POST"])
 def business_create_task():
@@ -1968,59 +2122,87 @@ def business_create_task():
     if response:
         return response
     if request.method == "POST":
-        # Tasks remain pending until Admin approval.
-        # Payment/budget reservation must be verified server-side before activation.
-        flash("Campaign submitted for Admin approval.", "success")
-        return redirect(url_for("business_dashboard"))
+        title = request.form.get("title", "").strip()
+        category = request.form.get("category", "").strip()
+        task_link = request.form.get("task_link", "").strip() or request.form.get("link", "").strip()
+        description = request.form.get("description", "").strip()
+        try:
+            reward = int(request.form.get("reward", "0") or 0)
+            slots = int(request.form.get("slots", "0") or 0)
+        except ValueError:
+            reward, slots = 0, 0
+        deadline = request.form.get("deadline", "").strip()
+        if not title or not category or not description or reward <= 0 or slots <= 0:
+            flash("Complete all task fields correctly.", "error")
+            return render_template("business/create_task.html")
+        if task_link and not task_link.startswith(("http://", "https://")):
+            flash("Task link must start with http:// or https://.", "error")
+            return render_template("business/create_task.html")
+        conn = db()
+        try:
+            conn.execute(
+                "INSERT INTO tasks(owner_user_id,title,category,description,task_link,reward,deadline,slots,difficulty,status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                (user["id"], title, category, description, task_link or None, reward, deadline or None, slots, "Beginner", "pending", now()),
+            )
+            conn.commit()
+            flash("Task submitted. Admin must approve it before workers can see it.", "success")
+            return redirect(url_for("business_dashboard"))
+        except Exception as e:
+            conn.rollback()
+            flash(f"Could not create task: {e}", "error")
+        finally:
+            conn.close()
     return render_template("business/create_task.html")
+
 
 @app.route("/business/tasks")
 def business_tasks():
     user, response = _business_guard()
     if response:
         return response
-    return render_template("business/dashboard.html", tasks=[],
-        available_budget=0, active_campaigns=0, total_reach=0,
-        pending_reviews=0, budget_used_percent=0,
-        approved_submissions=0, rejected_submissions=0, conversion_rate=0)
+    return render_template("business/dashboard.html", user=user, **_advertiser_metrics(user["id"]))
+
 
 @app.route("/business/wallet")
 def business_wallet():
     user, response = _business_guard()
     if response:
         return response
-    return render_template("business/dashboard.html", tasks=[],
-        available_budget=0, active_campaigns=0, total_reach=0,
-        pending_reviews=0, budget_used_percent=0,
-        approved_submissions=0, rejected_submissions=0, conversion_rate=0)
+    metrics = _advertiser_metrics(user["id"])
+    flash("Advertiser wallet is ready for campaign funding integration.", "info")
+    return render_template("business/dashboard.html", user=user, **metrics)
+
 
 @app.route("/business/transactions")
 def business_transactions():
     user, response = _business_guard()
     if response:
         return response
-    return render_template("business/dashboard.html", tasks=[],
-        available_budget=0, active_campaigns=0, total_reach=0,
-        pending_reviews=0, budget_used_percent=0,
-        approved_submissions=0, rejected_submissions=0, conversion_rate=0)
+    return render_template("business/dashboard.html", user=user, **_advertiser_metrics(user["id"]))
+
 
 @app.route("/business/submissions")
 def business_submissions():
     user, response = _business_guard()
     if response:
         return response
-    # Advertisers can view their own campaign status, but cannot approve/reject.
-    return render_template("business/dashboard.html", tasks=[],
-        available_budget=0, active_campaigns=0, total_reach=0,
-        pending_reviews=0, budget_used_percent=0,
-        approved_submissions=0, rejected_submissions=0, conversion_rate=0)
+    conn = db()
+    rows = conn.execute("""
+        SELECT s.*, t.title, t.reward, t.category, u.full_name, u.email
+        FROM submissions s
+        JOIN tasks t ON t.id=s.task_id
+        JOIN users u ON u.id=s.user_id
+        WHERE t.owner_user_id=?
+        ORDER BY s.id DESC
+        LIMIT 100
+    """, (user["id"],)).fetchall()
+    conn.close()
+    return render_template("business/submissions.html", user=user, submissions=rows)
+
 
 @app.route("/business/analytics")
 def business_analytics():
     user, response = _business_guard()
     if response:
         return response
-    return render_template("business/dashboard.html", tasks=[],
-        available_budget=0, active_campaigns=0, total_reach=0,
-        pending_reviews=0, budget_used_percent=0,
-        approved_submissions=0, rejected_submissions=0, conversion_rate=0)
+    return render_template("business/dashboard.html", user=user, **_advertiser_metrics(user["id"]))

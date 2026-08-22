@@ -36,7 +36,8 @@
       {% elif current_user.role in ['advertiser','business'] %}
         <span class="role-badge">ADVERTISER</span>
       {% else %}
-        <button class="btn small" id="install-app" type="button">Install App</button>
+        <button class="btn small" id="install-app" type="button" hidden>Install App</button>
+        <button class="btn small install-secondary" id="home-screen-help" type="button" hidden>Add to Home Screen</button>
       {% endif %}
     {% else %}
       <a class="btn small" href="{{ url_for('login') }}">Login</a>
@@ -82,42 +83,62 @@
 (() => {
   let deferredInstallPrompt = null;
   const installButton = document.getElementById('install-app');
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-  if (isStandalone && installButton) installButton.style.display = 'none';
+  const homeButton = document.getElementById('home-screen-help');
 
+  const isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.matchMedia('(display-mode: fullscreen)').matches ||
+    window.navigator.standalone === true;
+
+  if (isStandalone) {
+    if (installButton) installButton.hidden = true;
+    if (homeButton) homeButton.hidden = true;
+  }
+
+  // Chrome/Android fires this only when the site satisfies its installability
+  // requirements. We keep the native prompt for a real "Install App" flow.
   window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault();
     deferredInstallPrompt = event;
-    if (installButton) installButton.style.display = 'inline-flex';
+    if (installButton) installButton.hidden = false;
+    if (homeButton) homeButton.hidden = false;
   });
 
   window.addEventListener('appinstalled', () => {
     deferredInstallPrompt = null;
-    if (installButton) installButton.style.display = 'none';
+    if (installButton) installButton.hidden = true;
+    if (homeButton) homeButton.hidden = true;
   });
 
   if (installButton) {
     installButton.addEventListener('click', async () => {
-      if (deferredInstallPrompt) {
-        deferredInstallPrompt.prompt();
-        await deferredInstallPrompt.userChoice;
-        deferredInstallPrompt = null;
+      if (!deferredInstallPrompt) {
+        alert('TASKORA is not installable yet. Use Chrome on HTTPS, wait a few seconds, then try Install App again.');
         return;
       }
-      alert('If Install App is not available yet, open Chrome menu ⋮ and choose Install app. Make sure you are using HTTPS and the latest TASKORA version.');
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
     });
   }
 
-  // Show the original-style opening experience once per browser session.
-  // It never blocks the application: the fallback timeout always removes it.
+  // This is the browser's secondary Add to Home Screen path.
+  // It does not replace the native Install App prompt.
+  if (homeButton) {
+    homeButton.addEventListener('click', () => {
+      alert('A Android Chrome: ka bude menu ⋮ sannan ka zabi “Add to Home screen” idan kana son shortcut. “Install App” shi ne PWA installation na TASKORA.');
+    });
+  }
+
+  // Opening animation once per browser session.
   const splash = document.getElementById('taskora-splash');
   try {
     const alreadyShown = sessionStorage.getItem('taskora_splash_shown') === '1';
     if (splash && !alreadyShown) {
       sessionStorage.setItem('taskora_splash_shown', '1');
       window.addEventListener('load', () => {
-        window.setTimeout(() => splash.classList.add('is-hidden'), 900);
-        window.setTimeout(() => splash.remove(), 1450);
+        window.setTimeout(() => splash.classList.add('is-hidden'), 1100);
+        window.setTimeout(() => splash.remove(), 1600);
       }, {once:true});
     } else if (splash) {
       splash.remove();
@@ -125,14 +146,17 @@
   } catch (_) {
     if (splash) {
       window.addEventListener('load', () => {
-        window.setTimeout(() => splash.classList.add('is-hidden'), 900);
-        window.setTimeout(() => splash.remove(), 1450);
+        window.setTimeout(() => splash.classList.add('is-hidden'), 1100);
+        window.setTimeout(() => splash.remove(), 1600);
       }, {once:true});
     }
   }
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js', {scope: '/'}).catch(() => {});
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js', {scope: '/'})
+        .catch(() => {});
+    });
   }
 })();
 </script>

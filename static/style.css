@@ -1650,3 +1650,138 @@ button:disabled{opacity:.55;cursor:not-allowed}
 .admin-note-input{margin:0 0 6px;width:100%;padding:8px 9px;font-size:11px;border-radius:9px}
 .bank-admin-actions form:has(.admin-note-input){min-width:190px}
 @media(max-width:600px){.bank-admin-actions form:has(.admin-note-input){min-width:0}}
+
+
+/* Compact worker referral summary */
+.referral-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+.referral-summary-card{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:#f8fbfa;border:1px solid var(--line);border-radius:12px}
+.referral-summary-card span{font-size:9px;font-weight:800;letter-spacing:.8px;color:var(--muted)}
+.referral-summary-card strong{font-size:20px;line-height:1;color:var(--brand)}
+.referral-details{margin-top:12px}
+.referral-details-title{font-size:11px;font-weight:800;color:var(--muted);margin:0 0 7px}
+.referral-details .table-wrap{border-radius:11px}
+.referral-details th,.referral-details td{padding:9px 11px;font-size:10px}
+@media(max-width:600px){.referral-summary{gap:8px}.referral-summary-card{padding:10px 11px}.referral-summary-card strong{font-size:18px}.referral-details th,.referral-details td{padding:8px 9px}}
+
+
+/* =========================================================
+   TASKORA WORK OPENING ANIMATION
+   Shows once per browser session without blocking the app.
+========================================================= */
+.taskora-splash{
+  position:fixed;
+  inset:0;
+  z-index:99999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:linear-gradient(145deg,#f7fffd 0%,#e9f8f5 100%);
+  opacity:1;
+  visibility:visible;
+  transition:opacity .42s ease,visibility .42s ease;
+}
+
+.taskora-splash.is-hidden{
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+}
+
+.taskora-splash-inner{
+  width:min(86vw,330px);
+  text-align:center;
+  animation:taskoraSplashEnter .7s cubic-bezier(.2,.75,.25,1) both;
+}
+
+.taskora-splash-logo-wrap{
+  width:92px;
+  height:92px;
+  margin:0 auto 18px;
+  border-radius:26px;
+  display:grid;
+  place-items:center;
+  background:#fff;
+  box-shadow:0 16px 45px rgba(15,118,110,.18);
+  animation:taskoraSplashLogo 1.05s cubic-bezier(.2,.8,.25,1) both;
+}
+
+.taskora-splash-logo{
+  width:76px;
+  height:76px;
+  object-fit:contain;
+  border-radius:21px;
+}
+
+.taskora-splash-name{
+  color:var(--ink,#10201e);
+  font-size:28px;
+  line-height:1;
+  letter-spacing:-.9px;
+  font-weight:850;
+  animation:taskoraSplashText .7s .16s ease both;
+}
+
+.taskora-splash-name b{
+  color:var(--brand,#0f766e);
+}
+
+.taskora-splash-tagline{
+  margin-top:9px;
+  color:var(--muted,#6d7d7a);
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.35px;
+  animation:taskoraSplashText .7s .24s ease both;
+}
+
+.taskora-splash-loader{
+  width:118px;
+  height:3px;
+  margin:25px auto 0;
+  overflow:hidden;
+  border-radius:999px;
+  background:rgba(15,118,110,.12);
+  animation:taskoraSplashText .7s .3s ease both;
+}
+
+.taskora-splash-loader span{
+  display:block;
+  width:45%;
+  height:100%;
+  border-radius:inherit;
+  background:var(--brand,#0f766e);
+  animation:taskoraSplashLoad 1.05s ease-in-out infinite;
+}
+
+@keyframes taskoraSplashEnter{
+  from{opacity:0;transform:translateY(12px) scale(.97)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+
+@keyframes taskoraSplashLogo{
+  0%{opacity:0;transform:scale(.65) rotate(-7deg)}
+  65%{opacity:1;transform:scale(1.06) rotate(1deg)}
+  100%{transform:scale(1) rotate(0)}
+}
+
+@keyframes taskoraSplashText{
+  from{opacity:0;transform:translateY(7px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+@keyframes taskoraSplashLoad{
+  0%{transform:translateX(-120%)}
+  50%{transform:translateX(125%)}
+  100%{transform:translateX(280%)}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .taskora-splash-inner,
+  .taskora-splash-logo,
+  .taskora-splash-name,
+  .taskora-splash-tagline,
+  .taskora-splash-loader,
+  .taskora-splash-loader span{
+    animation:none!important;
+  }
+}

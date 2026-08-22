@@ -1,4 +1,4 @@
-const CACHE_NAME = 'taskora-v2';
+const CACHE_NAME = 'taskora-v3';
 const STATIC_ASSETS = [
   '/',
   '/static/style.css',

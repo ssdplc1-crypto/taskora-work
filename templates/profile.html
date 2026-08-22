@@ -1,16 +1,17 @@
 {% extends "base.html" %}
-{% block title %}Profile — TASKORA WORK{% endblock %}
+{% block title %}Profile — TASKORA{% endblock %}
 {% block content %}
 <div class="page-head"><div><span class="eyebrow">PROFILE</span><h1>{{ user.full_name or "Your Profile" }}</h1><p>{{ user.email or "No email" }}{% if user.phone %} · {{ user.phone }}{% endif %}</p></div></div>
 <div class="profile-menu card">
   <a class="profile-menu-item" href="{{ url_for('change_password') }}"><span class="menu-icon blue">⌁</span><div><b>Change Password</b><small>Update your account password</small></div><span>›</span></a>
-  <a class="profile-menu-item" href="{{ url_for('support') }}"><span class="menu-icon blue">?</span><div><b>Support</b><small>Get help with TASKORA WORK</small></div><span>›</span></a>
+  <a class="profile-menu-item" href="{{ url_for('support') }}"><span class="menu-icon blue">?</span><div><b>Support</b><small>Get help with TASKORA</small></div><span>›</span></a>
   <a class="profile-menu-item" href="{{ url_for('privacy') }}"><span class="menu-icon blue">✓</span><div><b>Privacy Policy</b><small>How your information is handled</small></div><span>›</span></a>
   <a class="profile-menu-item" href="{{ url_for('terms') }}"><span class="menu-icon blue">≡</span><div><b>Terms & Conditions</b><small>Platform rules and conditions</small></div><span>›</span></a>
   <a class="profile-menu-item logout-item" href="{{ url_for('logout') }}"><span class="menu-icon blue">↪</span><div><b>Logout</b><small>Sign out of your account</small></div><span>›</span></a>
 </div>
+
 <div class="form-card narrow">
-  <span class="eyebrow">WITHDRAWAL ACCOUNT</span><h2>Bank account</h2><p class="muted">Save the account you want TASKORA to use for your withdrawals. Admin will not ask you to re-enter it when paying a request.</p>
+  <span class="eyebrow">WITHDRAWAL ACCOUNT</span><h2>Add bank account</h2><p class="muted">New accounts start as Pending. Admin must verify them before they can be selected for withdrawal.</p>
   <form method="post" action="{{ url_for('profile') }}">
     <label>Bank code<input type="text" name="bank_code" placeholder="e.g. 044" maxlength="10" required></label>
     <label>Bank name<input type="text" name="bank_name" placeholder="e.g. Access Bank" required></label>
@@ -19,5 +20,25 @@
     <button class="btn" type="submit">Save Bank Account</button>
   </form>
 </div>
-<section class="section"><div class="section-head"><span class="eyebrow">SAVED ACCOUNTS</span><h2>Your accounts</h2></div><div class="grid two">{% for b in banks %}<div class="card"><h3>{{ b.bank_name or "Bank Account" }}</h3>{% set account_number=b.account_number|string %}<p>****{{ account_number[-4:] if account_number|length>=4 else '' }}</p><p>{{ b.account_name or "Name not verified" }}</p><span class="status {{ 'approved' if b.is_verified else 'pending' }}">{{ 'Verified' if b.is_verified else 'Pending verification' }}</span></div>{% else %}<div class="empty">No bank accounts saved yet.</div>{% endfor %}</div></section>
+
+<section class="section">
+  <div class="section-head"><span class="eyebrow">SAVED ACCOUNTS</span><h2>Your bank accounts</h2></div>
+  <div class="bank-account-grid">
+    {% for b in banks %}
+    {% set account_number=b.account_number|string %}
+    <div class="bank-account-card">
+      <div class="bank-account-top"><div class="bank-icon">₦</div><div><h3>{{ b.bank_name or "Bank Account" }}</h3><p>****{{ account_number[-4:] if account_number|length>=4 else '' }}</p></div></div>
+      <p class="bank-account-name">{{ b.account_name or "Name not verified" }}</p>
+      {% if b.status == 'verified' and b.is_verified %}
+        <span class="status approved">Verified · Ready for withdrawal</span>
+      {% elif b.status == 'rejected' %}
+        <span class="status rejected">Rejected</span>
+        {% if b.rejection_note %}<div class="bank-rejection-note">{{ b.rejection_note }}</div>{% endif %}
+      {% else %}
+        <span class="status pending">Pending verification</span>
+      {% endif %}
+    </div>
+    {% else %}<div class="empty">No bank accounts saved yet.</div>{% endfor %}
+  </div>
+</section>
 {% endblock %}

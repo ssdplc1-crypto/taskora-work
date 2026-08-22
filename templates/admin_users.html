@@ -1,1 +1,32 @@
-{% extends "base.html" %}{% block title %}Admin Users — TASKORA WORK{% endblock %}{% block content %}<div class="page-head"><div><span class="eyebrow">ADMIN · USERS</span><h1>Workers & accounts</h1></div></div><div class="table-wrap"><table><tr><th>Name</th><th>Email</th><th>Role</th><th>Activation</th><th>Action</th></tr>{% for u in users %}<tr><td>{{u.full_name}}</td><td>{{u.email}}</td><td>{{u.role}}</td><td>{% if u.activated %}<span class="status">ACTIVE</span>{% else %}INACTIVE{% endif %}</td><td>{% if u.activated %}<span class="muted">Permanent after payment</span>{% else %}<span class="muted">Waiting for payment</span>{% endif %}</td></tr>{% endfor %}</table></div>{% endblock %}
+{% extends "base.html" %}
+{% block title %}Admin Users — TASKORA{% endblock %}
+{% block content %}
+<div class="page-head"><div><span class="eyebrow">ADMIN · USERS & BANKS</span><h1>Workers & bank accounts</h1><p class="muted">Verify or reject worker withdrawal accounts before they become selectable.</p></div></div>
+
+<div class="table-wrap"><table><tr><th>Name</th><th>Email</th><th>Role</th><th>Activation</th></tr>{% for u in users %}<tr><td>{{u.full_name}}</td><td>{{u.email}}</td><td>{{u.role}}</td><td>{% if u.activated %}<span class="status approved">ACTIVE</span>{% else %}<span class="status pending">INACTIVE</span>{% endif %}</td></tr>{% endfor %}</table></div>
+
+<section class="section">
+  <div class="section-head"><span class="eyebrow">BANK CONTROL</span><h2>Worker bank accounts</h2></div>
+  <div class="bank-admin-list">
+  {% for b in banks %}
+    <div class="bank-admin-card">
+      <div class="bank-admin-main">
+        <div class="bank-icon">₦</div>
+        <div><h3>{{ b.bank_name }}</h3><p>****{{ (b.account_number|string)[-4:] }} · {{ b.account_name or 'Account name not supplied' }}</p><small>{{ b.worker_name or ('Worker #' ~ b.user_id) }} · {{ b.worker_email or '' }} · Bank code {{ b.bank_code }}</small></div>
+      </div>
+      <div class="bank-admin-status">
+        {% if b.status == 'verified' and b.is_verified %}<span class="status approved">Verified</span>
+        {% elif b.status == 'rejected' %}<span class="status rejected">Rejected</span>
+        {% else %}<span class="status pending">Pending</span>{% endif %}
+        {% if b.rejection_note %}<p class="bank-rejection-note">{{ b.rejection_note }}</p>{% endif %}
+      </div>
+      <div class="actions compact bank-admin-actions">
+        {% if b.status != 'verified' or not b.is_verified %}<form method="post" action="{{ url_for('admin_verify_bank', bank_id=b.id) }}"><button class="btn small" type="submit">Approve</button></form>{% endif %}
+        {% if b.status != 'rejected' %}<form method="post" action="{{ url_for('admin_reject_bank', bank_id=b.id) }}"><input class="admin-note-input" type="text" name="note" value="Bank account details could not be verified." maxlength=500><button class="btn danger small" type="submit">Reject</button></form>{% endif %}
+        <form method="post" action="{{ url_for('admin_delete_bank', bank_id=b.id) }}" onsubmit="return confirm('Remove this bank account?')"><button class="btn ghost small" type="submit">Remove</button></form>
+      </div>
+    </div>
+  {% else %}<div class="empty">No bank accounts found.</div>{% endfor %}
+  </div>
+</section>
+{% endblock %}

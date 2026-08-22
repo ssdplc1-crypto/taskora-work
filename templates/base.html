@@ -1,16 +1,25 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{% block title %}TASKORA WORK{% endblock %}</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-<link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>{% block title %}TASKORA{% endblock %}</title>
 <meta name="theme-color" content="#0f766e">
+<meta name="description" content="TASKORA — Learn, Work, Earn.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TASKORA">
+<link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+<link rel="icon" type="image/png" sizes="512x512" href="{{ url_for('static', filename='icons/icon-512.png') }}">
+<link rel="shortcut icon" href="{{ url_for('static', filename='favicon.png') }}">
+<link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+<link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 <header class="topbar">
   <a class="brand" href="{{ url_for('admin_dashboard') if current_user and current_user.role=='admin' else (url_for('business_dashboard') if current_user and current_user.role in ['advertiser','business'] else (url_for('dashboard') if current_user else url_for('index'))) }}">
-    <span class="brandmark">T</span>TASKORA <b>WORK</b>
+    <span class="brandmark">T</span>TASKORA
   </a>
   <nav>
     {% if current_user %}
@@ -19,7 +28,7 @@
       {% elif current_user.role in ['advertiser','business'] %}
         <span class="role-badge">ADVERTISER</span>
       {% else %}
-        <a class="btn small" id="install-app" href="{{ url_for('dashboard') }}">Install App</a>
+        <button class="btn small" id="install-app" type="button">Install App</button>
       {% endif %}
     {% else %}
       <a class="btn small" href="{{ url_for('login') }}">Login</a>
@@ -36,7 +45,7 @@
 {% if current_user and current_user.role=='admin' %}
 <nav class="bottom-nav admin-nav" aria-label="Admin navigation">
 <a class="{% if request.endpoint=='admin_dashboard' %}active{% endif %}" href="{{ url_for('admin_dashboard') }}"><span>⌂</span>Home</a>
-<a class="{% if request.endpoint in ['admin_tasks','admin_new_task'] %}active{% endif %}" href="{{ url_for('admin_tasks') }}"><span>✓</span>Tasks</a>
+<a class="{% if request.endpoint in ['admin_tasks','admin_new_task','admin_edit_task','admin_update_task_status'] %}active{% endif %}" href="{{ url_for('admin_tasks') }}"><span>✓</span>Tasks</a>
 <a class="{% if request.endpoint in ['admin_submissions','review_submission'] %}active{% endif %}" href="{{ url_for('admin_submissions') }}"><span>▣</span>Submissions</a>
 <a class="{% if request.endpoint in ['admin_withdrawals','admin_pay_withdrawal','admin_reject_withdrawal'] %}active{% endif %}" href="{{ url_for('admin_withdrawals') }}"><span>₦</span>Withdrawals</a>
 <a class="{% if request.endpoint=='admin_users' %}active{% endif %}" href="{{ url_for('admin_users') }}"><span>●</span>Workers</a>
@@ -62,15 +71,38 @@
 <footer><div class="footer-links"><a href="{{ url_for('account_type') }}">Create Account</a><a href="{{ url_for('login') }}">Sign In</a><a href="{{ url_for('support') }}">Support</a><a href="{{ url_for('privacy') }}">Privacy Policy</a><a href="{{ url_for('terms') }}">Terms & Conditions</a></div></footer>
 {% endif %}
 <script>
-let deferredInstallPrompt;
-window.addEventListener("beforeinstallprompt", (e) => {
-  e.preventDefault(); deferredInstallPrompt = e;
-  const btn = document.getElementById("install-app");
-  if (btn) btn.addEventListener("click", async (ev) => {
-    ev.preventDefault();
-    if (deferredInstallPrompt) { deferredInstallPrompt.prompt(); await deferredInstallPrompt.userChoice; deferredInstallPrompt=null; }
-  }, {once:true});
-});
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("/static/sw.js").catch(()=>{});
+(() => {
+  let deferredInstallPrompt = null;
+  const installButton = document.getElementById('install-app');
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  if (isStandalone && installButton) installButton.style.display = 'none';
+
+  window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    if (installButton) installButton.style.display = 'inline-flex';
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    if (installButton) installButton.style.display = 'none';
+  });
+
+  if (installButton) {
+    installButton.addEventListener('click', async () => {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        return;
+      }
+      alert('If Install App is not available yet, open Chrome menu ⋮ and choose Install app. Make sure you are using HTTPS and the latest TASKORA version.');
+    });
+  }
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js', {scope: '/'}).catch(() => {});
+  }
+})();
 </script>
 </body></html>

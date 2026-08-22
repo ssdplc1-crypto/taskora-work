@@ -1,53 +1,76 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — TASKORA WORK<nav class="bottom-nav" aria-label="Dashboard navigation">
-<a class="active" href="{{ url_for('dashboard') }}"><span>⌂</span>Home</a>
-<a href="{{ url_for('tasks') }}"><span>✓</span>Tasks</a>
-<a href="{{ url_for('wallet') }}"><span>₦</span>Wallet</a>
-<a href="{{ url_for('profile') }}"><span>◉</span>Profile</a>
-</nav>
-{% endblock %}
+{% block title %}Dashboard — TASKORA{% endblock %}
 {% block content %}
-<div class="page-head"><div><span class="eyebrow">WORKER DASHBOARD</span><h1>Hello, {{ user.full_name.split()[0] }} 👋</h1></div>{% if not user.activated %}<a class="btn" href="{{ url_for('activate') }}">Activate ₦3,000</a>{% endif %}</div>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">WORKER DASHBOARD</span>
+    <h1>Hello, {{ user.full_name.split()[0] }} 👋</h1>
+    <p>Track your earnings, referrals and available work from one place.</p>
+  </div>
+  {% if not user.activated %}<a class="btn" href="{{ url_for('activate') }}">Activate ₦{{ "{:,}".format(activation_fee) }}</a>{% endif %}
+</div>
+
 {% if not user.activated %}
 <div class="notice"><strong>Account not activated.</strong> Activate your worker account to apply for tasks and withdraw earnings.</div>
 {% endif %}
-<div class="stats">
-  <div class="stat"><span>Available</span><strong>₦{{ "{:,}".format(balance) }}</strong></div>
-  <div class="stat"><span>Pending</span><strong>₦{{ "{:,}".format(pending) }}</strong></div>
-  <div class="stat"><span>Minimum withdrawal</span><strong>₦{{ "{:,}".format(min_withdrawal) }}</strong></div>
-</div>
-<section class="section">
-<div class="section-head"><span class="eyebrow">TASK MARKETPLACE</span><h2>Tasks you can work on</h2></div>
-<div class="grid two">
-{% for task in tasks %}
-<a class="task-card link-card" href="{{ url_for('task_detail', task_id=task.id) }}">
-<div class="pill">{{ task.category }}</div><h3>{{ task.title }}</h3><p>{{ task.description[:120] }}{% if task.description|length > 120 %}…{% endif %}</p>
-<div class="task-bottom"><strong>₦{{ "{:,}".format(task.reward) }}</strong><span>{{ task.slots }} slots</span></div>
-</a>
-{% else %}<div class="empty">No open tasks yet.</div>{% endfor %}
-</div></section>
-<section class="section referral-card">
-<div class="section-head"><span class="eyebrow">REFER & EARN</span><h2>₦500 for every successful activation</h2></div>
-<div class="referral-box">
-  <div><div class="mini-label">REFERRAL CODE</div><strong>{{ user.referral_code or "—" }}</strong></div>
-  <div><span>Reward is added automatically after the referred worker completes the successful ₦3,000 activation.</span></div>
-</div>
-<div class="actions">
-  <button class="btn ghost" type="button" onclick="navigator.clipboard && navigator.clipboard.writeText('{{ user.referral_code }}')">Copy</button>
-  <button class="btn" type="button" onclick="navigator.share ? navigator.share({title:'TASKORA WORK',text:'Join TASKORA WORK with my referral code {{ user.referral_code }}',url:'{{ request.host_url }}r/{{ user.referral_code }}'}) : navigator.clipboard.writeText('{{ request.host_url }}r/{{ user.referral_code }}')">Share</button>
-</div>
-<div class="referral-link">{{ request.host_url }}r/{{ user.referral_code }}</div>
-<div class="grid two" style="margin-top:18px">
-  <div class="card"><span class="mini-label">PENDING</span><h3>{{ referral_pending }}</h3><p>Signed up but not yet activated.</p></div>
-  <div class="card"><span class="mini-label">APPROVED</span><h3>{{ referral_approved }}</h3><p>Completed ₦3,000 activation. <strong>Reward: ₦500</strong></p></div>
-</div>
-<div class="table-wrap" style="margin-top:18px"><table><tr><th>Referral</th><th>Status</th><th>Reward</th></tr>
-{% for r in referrals %}<tr><td>{{ r.full_name }}</td><td>{% if r.activated %}<span class="status">Approved</span>{% else %}<span class="status">Pending</span>{% endif %}</td><td>{% if r.activated %}₦500{% else %}—{% endif %}</td></tr>{% else %}<tr><td colspan="3">No referrals yet.</td></tr>{% endfor %}
-</table></div>
+
+<section class="worker-metrics" aria-label="Worker account summary">
+  <div class="worker-metric-card available">
+    <div class="worker-metric-icon">₦</div><div><span>Available Balance</span><strong>₦{{ "{:,}".format(balance) }}</strong><small>Ready for withdrawal</small></div>
+  </div>
+  <div class="worker-metric-card pending">
+    <div class="worker-metric-icon">◷</div><div><span>Pending</span><strong>₦{{ "{:,}".format(pending) }}</strong><small>Awaiting approval</small></div>
+  </div>
+  <div class="worker-metric-card minimum">
+    <div class="worker-metric-icon">↗</div><div><span>Minimum Withdrawal</span><strong>₦{{ "{:,}".format(min_withdrawal) }}</strong><small>Minimum amount</small></div>
+  </div>
+  <div class="worker-metric-card referral">
+    <div class="worker-metric-icon">↗</div><div><span>Referral</span><strong>{{ referrals|length }}</strong><small>Total referred workers</small></div>
+  </div>
+  <div class="worker-metric-card referral-pending">
+    <div class="worker-metric-icon">◷</div><div><span>Pending Referral</span><strong>{{ referral_pending }}</strong><small>Not activated yet</small></div>
+  </div>
+  <div class="worker-metric-card referral-approved">
+    <div class="worker-metric-icon">✓</div><div><span>Approved Referral</span><strong>{{ referral_approved }}</strong><small>Successful activations</small></div>
+  </div>
 </section>
+
 <section class="section">
-<div class="section-head"><span class="eyebrow">RECENT ACTIVITY</span><h2>Your submissions</h2></div>
-<div class="table-wrap"><table><tr><th>Task</th><th>Status</th><th>Date</th></tr>
-{% for s in submissions %}<tr><td>{{ s.title }}</td><td><span class="status {{ s.status }}">{{ s.status }}</span></td><td>{{ s.submitted_at[:10] }}</td></tr>{% else %}<tr><td colspan="3">No submissions yet.</td></tr>{% endfor %}
-</table></div></section>
+  <div class="section-head"><span class="eyebrow">TASK MARKETPLACE</span><h2>Tasks you can work on</h2></div>
+  <div class="grid two">
+  {% for task in tasks %}
+    <a class="task-card link-card" href="{{ url_for('task_detail', task_id=task.id) }}">
+      <div class="pill">{{ task.category }}</div><h3>{{ task.title }}</h3><p>{{ task.description[:120] }}{% if task.description|length > 120 %}…{% endif %}</p>
+      <div class="task-bottom"><strong>₦{{ "{:,}".format(task.reward) }}</strong><span>{{ task.slots }} slots</span></div>
+    </a>
+  {% else %}<div class="empty">No open tasks yet.</div>{% endfor %}
+  </div>
+</section>
+
+<section class="section referral-card">
+  <div class="section-head"><span class="eyebrow">REFER & EARN</span><h2>₦{{ "{:,}".format(referral_reward) }} for every successful activation</h2></div>
+  <div class="referral-box">
+    <div><div class="mini-label">REFERRAL CODE</div><strong>{{ user.referral_code or "—" }}</strong></div>
+    <div><span>Reward is added automatically after the referred worker completes the successful ₦{{ "{:,}".format(activation_fee) }} activation.</span></div>
+  </div>
+  <div class="actions">
+    <button class="btn ghost" type="button" onclick="navigator.clipboard && navigator.clipboard.writeText('{{ user.referral_code }}')">Copy</button>
+    <button class="btn" type="button" onclick="navigator.share ? navigator.share({title:'TASKORA',text:'Join TASKORA with my referral code {{ user.referral_code }}',url:'{{ request.host_url }}r/{{ user.referral_code }}'}) : navigator.clipboard.writeText('{{ request.host_url }}r/{{ user.referral_code }}')">Share</button>
+  </div>
+  <div class="referral-link">{{ request.host_url }}r/{{ user.referral_code }}</div>
+  <div class="grid two" style="margin-top:18px">
+    <div class="card"><span class="mini-label">PENDING</span><h3>{{ referral_pending }}</h3><p>Signed up but not yet activated.</p></div>
+    <div class="card"><span class="mini-label">APPROVED</span><h3>{{ referral_approved }}</h3><p>Completed ₦{{ "{:,}".format(activation_fee) }} activation. <strong>Reward: ₦{{ "{:,}".format(referral_reward) }}</strong></p></div>
+  </div>
+  <div class="table-wrap" style="margin-top:18px"><table><tr><th>Referral</th><th>Status</th><th>Reward</th></tr>
+  {% for r in referrals %}<tr><td>{{ r.full_name }}</td><td>{% if r.activated %}<span class="status approved">Approved</span>{% else %}<span class="status pending">Pending</span>{% endif %}</td><td>{% if r.activated %}₦{{ "{:,}".format(referral_reward) }}{% else %}—{% endif %}</td></tr>{% else %}<tr><td colspan="3">No referrals yet.</td></tr>{% endfor %}
+  </table></div>
+</section>
+
+<section class="section">
+  <div class="section-head"><span class="eyebrow">RECENT ACTIVITY</span><h2>Your submissions</h2></div>
+  <div class="table-wrap"><table><tr><th>Task</th><th>Status</th><th>Date</th></tr>
+  {% for s in submissions %}<tr><td>{{ s.title }}</td><td><span class="status {{ s.status }}">{{ s.status }}</span></td><td>{{ s.submitted_at[:10] }}</td></tr>{% else %}<tr><td colspan="3">No submissions yet.</td></tr>{% endfor %}
+  </table></div>
+</section>
 {% endblock %}

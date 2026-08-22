@@ -1,19 +1,40 @@
 {% extends "base.html" %}
-{% block title %}Admin Tasks — TASKORA WORK{% endblock %}
+{% block title %}Admin Tasks — TASKORA{% endblock %}
 {% block content %}
-<div class="page-head"><div><span class="eyebrow">ADMIN · TASKS</span><h1>Task Control Center</h1><p class="muted">Review advertiser campaigns, confirm funding, publish tasks to workers and manage admin-created tasks.</p></div><a class="btn" href="{{ url_for('admin_new_task') }}">＋ Create Admin Task</a></div>
-<div class="task-list admin-task-list">
-{% for t in tasks %}
-<article class="task-row admin-task-row">
-  <div class="task-platform-icon">{% if 'WhatsApp' in t.category %}📱{% elif 'X' in t.category or 'Twitter' in t.category %}𝕏{% elif 'YouTube' in t.category %}▶{% elif 'Telegram' in t.category %}✈{% elif 'Facebook' in t.category %}f{% elif 'Instagram' in t.category %}◎{% elif 'TikTok' in t.category %}♪{% elif 'Website' in t.category %}🌐{% else %}✓{% endif %}</div>
-  <div class="task-row-info"><div class="task-row-top"><span class="pill">{{ t.category }}</span><span class="task-status">{{ t.status|title }}</span>{% if t.owner_user_id %}<span class="pill">BUSINESS</span>{% endif %}</div><h3>{{ t.title }}</h3><p>{{ t.description[:220] }}</p>{% if t.owner_user_id %}<small class="muted">Advertiser: {{ t.owner_name or 'Advertiser' }}{% if t.owner_email %} · {{ t.owner_email }}{% endif %}</small>{% else %}<small class="muted">Source: TASKORA Admin</small>{% endif %}</div>
-  <div class="task-row-meta"><div><span>Worker reward</span><strong>₦{{ "{:,.0f}".format(t.reward) }}</strong></div><div><span>Slots</span><strong>{{ t.slots }}</strong></div>{% if t.owner_user_id %}<div><span>Total budget</span><strong>₦{{ "{:,.0f}".format(t.total_budget or 0) }}</strong></div><div><span>Reserved</span><strong>₦{{ "{:,.0f}".format(t.reserved_budget or 0) }}</strong></div>{% endif %}<div><span>Submissions</span><strong>{{ t.submission_count or 0 }}</strong></div></div>
-  <div class="task-row-delete" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-    {% if t.owner_user_id and t.status == 'pending' %}<form method="post" action="{{ url_for('admin_approve_advertiser_task',task_id=t.id) }}" onsubmit="return confirm('Approve and publish this fully funded advertiser task?');"><button class="btn small" type="submit">Approve & Publish</button></form><form method="post" action="{{ url_for('admin_reject_advertiser_task',task_id=t.id) }}" onsubmit="return confirm('Reject this advertiser task and return unused reserved funds?');"><button class="btn danger small" type="submit">Reject</button></form>{% endif %}
-    {% if t.owner_user_id and t.status in ['open','pending'] %}<form method="post" action="{{ url_for('admin_close_advertiser_task',task_id=t.id) }}" onsubmit="return confirm('Close this campaign and return unused funds?');"><button class="btn secondary small" type="submit">Close / Refund</button></form>{% endif %}
-    <form method="post" action="{{ url_for('admin_delete_task',task_id=t.id) }}" onsubmit="return confirm('Delete this task?');"><button class="btn danger small" type="submit">Delete</button></form>
-  </div>
-</article>
-{% else %}<div class="empty">No tasks created yet.</div>{% endfor %}
+<div class="page-head">
+  <div><span class="eyebrow">ADMIN · TASK CONTROL</span><h1>Manage tasks</h1><p class="muted">Create, edit, publish, close or delete tasks. Expired tasks remain visible here.</p></div>
+  <a class="btn" href="{{ url_for('admin_new_task') }}">＋ Create Task</a>
+</div>
+
+<div class="task-admin-list">
+{% for task in tasks %}
+  <article class="task-admin-card">
+    <div class="task-admin-main">
+      <div class="task-admin-top"><span class="pill">{{ task.category }}</span><span class="status {{ task.status or 'open' }}">{{ (task.status or 'open')|title }}</span></div>
+      <h3>{{ task.title }}</h3>
+      <p>{{ task.description[:180] }}{% if task.description|length > 180 %}…{% endif %}</p>
+      <div class="task-meta">
+        <span>₦{{ "{:,}".format(task.reward or 0) }}</span><span>{{ task.slots or 0 }} slots</span><span>Deadline: {{ task.deadline or 'No deadline' }}</span><span>Submissions: {{ task.submission_count or 0 }}</span>
+      </div>
+      {% if task.owner_user_id %}<div class="task-owner">Advertiser: {{ task.owner_name or task.owner_email or 'Business account' }}</div>{% else %}<div class="task-owner">Created by TASKORA Admin</div>{% endif %}
+    </div>
+    <div class="task-admin-actions">
+      {% if task.owner_user_id %}
+        {% if task.status in ['pending','awaiting_payment'] %}<form method="post" action="{{ url_for('admin_approve_advertiser_task', task_id=task.id) }}"><button class="btn small" type="submit">Approve</button></form>{% endif %}
+        {% if task.status in ['pending','awaiting_payment'] %}<form method="post" action="{{ url_for('admin_reject_advertiser_task', task_id=task.id) }}"><button class="btn danger small" type="submit">Reject</button></form>{% endif %}
+        {% if task.status not in ['completed','refunded','rejected','closed'] %}<form method="post" action="{{ url_for('admin_close_advertiser_task', task_id=task.id) }}"><button class="btn ghost small" type="submit">Close</button></form>{% endif %}
+      {% else %}
+        <a class="btn small" href="{{ url_for('admin_edit_task', task_id=task.id) }}">Edit</a>
+        <form method="post" action="{{ url_for('admin_update_task_status', task_id=task.id) }}" class="status-form">
+          <select name="status" aria-label="Task status">
+            {% for st in ['open','closed','expired','completed'] %}<option value="{{ st }}" {% if (task.status or 'open') == st %}selected{% endif %}>{{ st|title }}</option>{% endfor %}
+          </select>
+          <button class="btn ghost small" type="submit">Update</button>
+        </form>
+      {% endif %}
+      <form method="post" action="{{ url_for('admin_delete_task', task_id=task.id) }}" onsubmit="return confirm('Delete this task permanently?')"><button class="btn danger small" type="submit">Delete</button></form>
+    </div>
+  </article>
+{% else %}<div class="empty">No tasks found.</div>{% endfor %}
 </div>
 {% endblock %}

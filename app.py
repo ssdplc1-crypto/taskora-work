@@ -23,7 +23,7 @@ except ImportError:
     OpenAI = None
 
 from werkzeug.middleware.proxy_fix import ProxyFix
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -486,10 +486,6 @@ def lagos_now():
     return datetime.now(LAGOS_TZ)
 
 
-def is_friday():
-    return lagos_now().weekday() == 4
-
-
 def valid_amount(value):
     try:
         amount = int(str(value))
@@ -616,6 +612,15 @@ def inject_globals():
         "min_withdrawal": MIN_WITHDRAWAL,
         "referral_reward": REFERRAL_REWARD,
     }
+
+
+@app.route("/sw.js")
+def root_service_worker():
+    """Serve the PWA service worker from the site root so it can control the whole app."""
+    response = send_from_directory(app.static_folder, "sw.js", mimetype="application/javascript")
+    response.headers["Service-Worker-Allowed"] = "/"
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response
 
 
 @app.route("/")
@@ -813,8 +818,8 @@ def activate_pay():
             "phonenumber": u["phone"],
         },
         "customizations": {
-            "title": "TASKORA WORK Activation",
-            "description": "TASKORA WORK account activation",
+            "title": "TASKORA Activation",
+            "description": "TASKORA account activation",
         },
     }
 
@@ -1416,13 +1421,17 @@ def wallet():
         "SELECT * FROM ledger WHERE user_id=? ORDER BY id DESC LIMIT 50", (u["id"],)
     ).fetchall()
     withdrawals = conn.execute(
-        "SELECT w.*, b.bank_name,b.account_number FROM withdrawals w JOIN bank_accounts b ON b.id=w.bank_account_id WHERE w.user_id=? AND w.status <> 'rejected' ORDER BY w.id DESC LIMIT 30",
+        "SELECT w.*, b.bank_name,b.account_number FROM withdrawals w JOIN bank_accounts b ON b.id=w.bank_account_id WHERE w.user_id=? ORDER BY w.id DESC LIMIT 30",
         (u["id"],)
     ).fetchall()
-    banks = conn.execute("SELECT * FROM bank_accounts WHERE user_id=? AND is_deleted=0 ORDER BY id DESC", (u["id"],)).fetchall()
+    banks = conn.execute("""
+        SELECT * FROM bank_accounts
+        WHERE user_id=? AND is_deleted=0 AND is_verified=1 AND status='verified'
+        ORDER BY id DESC
+    """, (u["id"],)).fetchall()
     conn.close()
     return render_template("wallet.html", balance=available_balance(u["id"]), pending=pending_balance(u["id"]),
-                           ledger=ledger, withdrawals=withdrawals, banks=banks)
+                           min_withdrawal=MIN_WITHDRAWAL, ledger=ledger, withdrawals=withdrawals, banks=banks)
 
 
 @app.route("/change-password", methods=["GET", "POST"])
@@ -1517,11 +1526,6 @@ def withdraw():
         flash(f"Minimum withdrawal is ₦{MIN_WITHDRAWAL:,}.", "error")
         return redirect(url_for("wallet"))
 
-    # Friday-only request window. Admin can process at any time after review.
-    if not is_friday():
-        flash("Weekly withdrawal requests open on Friday. Your balance remains safe in your wallet.", "error")
-        return redirect(url_for("wallet"))
-
     conn = db()
     bank = conn.execute("SELECT * FROM bank_accounts WHERE id=? AND user_id=? AND is_deleted=0", (bank_id, u["id"])).fetchone()
     conn.close()
@@ -1563,7 +1567,7 @@ def withdraw():
     )
     conn.commit()
     conn.close()
-    flash("Withdrawal request submitted for weekly processing.", "success")
+    flash("Withdrawal request submitted successfully. Admin will review it.", "success")
     return redirect(url_for("wallet"))
 
 
@@ -1785,6 +1789,115 @@ def admin_new_task():
     return render_template("admin_task.html")
 
 
+@app.route("/admin/tasks/<int:task_id>/edit", methods=["GET", "POST"])
+@admin_required
+def admin_edit_task(task_id):
+    """Edit an Admin-created task without changing advertiser campaign finances."""
+    conn = db()
+    task = conn.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
+    if not task:
+        conn.close()
+        flash("Task not found.", "error")
+        return redirect(url_for("admin_tasks"))
+
+    # Advertiser campaigns have reserved-budget/payment logic. Keep their
+    # existing approval/reject/close flow intact instead of mutating them here.
+    if task["owner_user_id"]:
+        conn.close()
+        flash("Advertiser campaigns use their existing funding and approval controls; this editor is for Admin-created tasks.", "error")
+        return redirect(url_for("admin_tasks"))
+
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        category = request.form.get("category", "").strip()
+        task_link = request.form.get("task_link", "").strip()
+        description = request.form.get("description", "").strip()
+        deadline = request.form.get("deadline", "").strip()
+        difficulty = request.form.get("difficulty", "Beginner").strip() or "Beginner"
+        status = request.form.get("status", task["status"] or "open").strip().lower()
+
+        try:
+            reward = int(request.form.get("reward", "0") or 0)
+            slots = int(request.form.get("slots", "1") or 1)
+        except (TypeError, ValueError):
+            reward, slots = 0, 0
+
+        allowed_statuses = {"open", "closed", "expired", "completed"}
+        if status not in allowed_statuses:
+            status = task["status"] or "open"
+
+        if not title or not category or not description:
+            flash("Title, category and description are required.", "error")
+            conn.close()
+            return render_template("admin_task.html", task=task, edit_mode=True)
+        if not task_link or not task_link.startswith(("http://", "https://")):
+            flash("Task link must start with http:// or https://.", "error")
+            conn.close()
+            return render_template("admin_task.html", task=task, edit_mode=True)
+        if reward <= 0 or slots <= 0:
+            flash("Reward and slots must be greater than zero.", "error")
+            conn.close()
+            return render_template("admin_task.html", task=task, edit_mode=True)
+
+        submissions_count = conn.execute(
+            "SELECT COUNT(*) FROM submissions WHERE task_id=?", (task_id,)
+        ).fetchone()[0]
+        if submissions_count and (reward != int(task["reward"] or 0) or slots != int(task["slots"] or 1)):
+            flash("Reward and slots cannot be changed after submissions exist. Other task details can still be edited.", "error")
+            conn.close()
+            return render_template("admin_task.html", task=task, edit_mode=True)
+
+        try:
+            conn.execute(
+                """UPDATE tasks SET title=?,category=?,description=?,task_link=?,reward=?,deadline=?,slots=?,difficulty=?,status=? WHERE id=?""",
+                (title, category, description, task_link, reward, deadline or None, slots, difficulty, status, task_id),
+            )
+            conn.commit()
+            flash("Task updated successfully.", "success")
+        except Exception as e:
+            conn.rollback()
+            flash(f"Could not update task: {e}", "error")
+        finally:
+            conn.close()
+        return redirect(url_for("admin_tasks"))
+
+    conn.close()
+    return render_template("admin_task.html", task=task, edit_mode=True)
+
+
+@app.route("/admin/tasks/<int:task_id>/status", methods=["POST"])
+@admin_required
+def admin_update_task_status(task_id):
+    """Manage status for Admin-created tasks without touching advertiser finances."""
+    status = request.form.get("status", "").strip().lower()
+    allowed = {"open", "closed", "expired", "completed"}
+    if status not in allowed:
+        flash("Invalid task status.", "error")
+        return redirect(url_for("admin_tasks"))
+
+    conn = db()
+    task = conn.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
+    if not task:
+        conn.close()
+        flash("Task not found.", "error")
+        return redirect(url_for("admin_tasks"))
+    if task["owner_user_id"]:
+        conn.close()
+        flash("Use the existing advertiser campaign approval/reject/close controls for funded campaigns.", "error")
+        return redirect(url_for("admin_tasks"))
+
+    try:
+        conn.execute("UPDATE tasks SET status=? WHERE id=?", (status, task_id))
+        conn.commit()
+        flash(f"Task status changed to {status}.", "success")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Could not change task status: {e}", "error")
+    finally:
+        conn.close()
+    return redirect(url_for("admin_tasks"))
+
+
 @app.route("/admin/submissions")
 @admin_required
 def admin_submissions():
@@ -1895,7 +2008,7 @@ def admin_ai():
                 response = client.responses.create(
                     model=OPENAI_MODEL,
                     instructions=(
-                        "You are TASKORA AI, the internal assistant for TASKORA WORK. "
+                        "You are TASKORA AI, the internal assistant for TASKORA. "
                         "Give concise, practical help to the administrator. Do not invent "
                         "financial transactions, user records, or system actions. "
                         "If you do not know something, say so clearly."
@@ -1928,7 +2041,6 @@ def admin_withdrawals():
         SELECT w.*,u.full_name,u.email,b.bank_name,b.bank_code,b.account_number,b.account_name
         FROM withdrawals w JOIN users u ON u.id=w.user_id
         JOIN bank_accounts b ON b.id=w.bank_account_id
-        WHERE w.status <> 'rejected'
         ORDER BY CASE WHEN w.status='pending' THEN 0 ELSE 1 END,w.id DESC
     """).fetchall()
     conn.close()
@@ -1954,7 +2066,7 @@ def admin_pay_withdrawal(withdrawal_id):
         "account_number": w["account_number"],
         "amount": w["net_amount"],
         "currency": CURRENCY,
-        "narration": "TASKORA WORK weekly earnings",
+        "narration": "TASKORA earnings",
         "reference": w["reference"],
         "beneficiary_name": w["account_name"] or w["full_name"],
         "debit_currency": CURRENCY
@@ -1984,9 +2096,13 @@ def admin_users():
         users = conn.execute(
             "SELECT * FROM users WHERE role='worker' ORDER BY id DESC"
         ).fetchall()
-        banks = conn.execute(
-            "SELECT * FROM bank_accounts WHERE COALESCE(is_deleted,0)=0 ORDER BY id DESC"
-        ).fetchall()
+        banks = conn.execute("""
+            SELECT b.*, u.full_name AS worker_name, u.email AS worker_email
+            FROM bank_accounts b
+            JOIN users u ON u.id=b.user_id
+            WHERE COALESCE(b.is_deleted,0)=0
+            ORDER BY b.id DESC
+        """).fetchall()
         return render_template("admin_users.html", users=users, banks=banks)
     except Exception as e:
         conn.rollback()
@@ -2158,14 +2274,14 @@ def terms():
     <!doctype html>
     <html lang="en">
     <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>TASKORA WORK — Terms & Conditions</title>
+    <title>TASKORA — Terms & Conditions</title>
     <style>body{font-family:system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.7}a{color:inherit}</style>
     </head><body>
-    <h1>TASKORA WORK — Terms &amp; Conditions</h1>
-    <p>By using TASKORA WORK, you agree to use the platform lawfully and to provide accurate account information.</p>
+    <h1>TASKORA — Terms &amp; Conditions</h1>
+    <p>By using TASKORA, you agree to use the platform lawfully and to provide accurate account information.</p>
     <p>Tasks must be completed honestly and according to the instructions provided. Fraudulent activity, duplicate submissions, or attempts to abuse the platform may result in account restrictions.</p>
-    <p>Activation, task rewards, withdrawals, and other platform rules are subject to the current rules displayed inside TASKORA WORK.</p>
-    <p><a href="/">← Back to TASKORA WORK</a></p>
+    <p>Activation, task rewards, withdrawals, and other platform rules are subject to the current rules displayed inside TASKORA.</p>
+    <p><a href="/">← Back to TASKORA</a></p>
     </body></html>
     """
 
@@ -2176,13 +2292,13 @@ def privacy():
     <!doctype html>
     <html lang="en">
     <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>TASKORA WORK — Privacy Policy</title>
+    <title>TASKORA — Privacy Policy</title>
     <style>body{font-family:system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.7}a{color:inherit}</style>
     </head><body>
-    <h1>TASKORA WORK — Privacy Policy</h1>
-    <p>TASKORA WORK uses the information you provide to create and operate your account, process tasks, manage balances, and process withdrawals.</p>
+    <h1>TASKORA — Privacy Policy</h1>
+    <p>TASKORA uses the information you provide to create and operate your account, process tasks, manage balances, and process withdrawals.</p>
     <p>We do not ask users to submit information that is not needed for the operation of the service. Payment-related information is handled for payment verification and account operations.</p>
-    <p><a href="/">← Back to TASKORA WORK</a></p>
+    <p><a href="/">← Back to TASKORA</a></p>
     </body></html>
     """
 
@@ -2193,13 +2309,13 @@ def support():
     <!doctype html>
     <html lang="en">
     <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>TASKORA WORK — Support</title>
+    <title>TASKORA — Support</title>
     <style>body{font-family:system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.7}a{color:inherit}</style>
     </head><body>
-    <h1>TASKORA WORK — Support</h1>
-    <p>If you need help with your account, activation, tasks, wallet, or withdrawal, use the support contact provided by TASKORA WORK.</p>
+    <h1>TASKORA — Support</h1>
+    <p>If you need help with your account, activation, tasks, wallet, or withdrawal, use the support contact provided by TASKORA.</p>
     <p>Please include your registered email and a clear description of the issue when contacting support.</p>
-    <p><a href="/">← Back to TASKORA WORK</a></p>
+    <p><a href="/">← Back to TASKORA</a></p>
     </body></html>
     """
 
@@ -2586,7 +2702,7 @@ def business_fund_task(task_id):
             "redirect_url": redirect_url,
             "payment_options": "card, banktransfer, ussd",
             "customer": {"email": user["email"], "name": user["full_name"], "phonenumber": user["phone"]},
-            "customizations": {"title": "TASKORA WORK Campaign Funding", "description": f"Fund campaign: {task['title']}"},
+            "customizations": {"title": "TASKORA Campaign Funding", "description": f"Fund campaign: {task['title']}"},
             "meta": {"taskora_type": "advertiser_campaign", "task_id": task_id, "advertiser_id": user["id"]},
         }
         try:
@@ -2716,7 +2832,7 @@ def business_wallet_fund():
             "redirect_url": payment_redirect_url("/business/payment/wallet-callback"),
             "payment_options": "card, banktransfer, ussd",
             "customer": {"email": user["email"], "name": user["full_name"], "phonenumber": user["phone"]},
-            "customizations": {"title": "TASKORA WORK Advertiser Wallet", "description": "Add campaign funds"},
+            "customizations": {"title": "TASKORA Advertiser Wallet", "description": "Add campaign funds"},
             "meta": {"taskora_type": "advertiser_wallet", "advertiser_id": user["id"]},
         })
         link = str((result.get("data") or {}).get("link") or "").strip()

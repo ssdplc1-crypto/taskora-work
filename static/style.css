@@ -1291,7 +1291,7 @@ footer{
 
 }
 
-/* TASKORA WORK — dashboard bottom navigation + referral card */
+/* TASKORA — dashboard bottom navigation + referral card */
 .referral-card{margin-top:28px}
 .referral-box{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px;background:#fff;border:1px solid var(--line);border-radius:15px}
 .referral-box strong{font-size:26px;letter-spacing:2px;color:var(--brand)}
@@ -1304,11 +1304,11 @@ footer{
 @media (min-width:851px){.bottom-nav{max-width:520px;left:50%;right:auto;transform:translateX(-50%);border:1px solid var(--line);border-bottom:0;border-radius:16px 16px 0 0}}
 @media (max-width:600px){.referral-box{align-items:flex-start;flex-direction:column}.referral-box strong{font-size:23px}.bottom-nav a{min-width:58px}}
 
-/* TASKORA WORK current UI revision */
+/* TASKORA current UI revision */
 body{padding-bottom:78px}.topbar nav a:not(.btn){display:none!important}.topbar{padding-left:4%;padding-right:4%}.topbar nav{margin-left:auto}.notice.error{background:#fff0ee;color:#9b1c13;border:1px solid #ffd0cb}.notice.success{background:#edf9f2;color:#166534;border:1px solid #ccebd8}.status{display:inline-block;padding:4px 8px;border-radius:999px;background:var(--soft);color:var(--brand);font-size:11px;font-weight:800}.form-card textarea{width:100%;resize:vertical}
 
 /* =========================================================
-   TASKORA WORK V2 — ADMIN + PROFILE + PROOF UI
+   TASKORA V2 — ADMIN + PROFILE + PROOF UI
 ========================================================= */
 .role-badge{font-size:10px;font-weight:900;letter-spacing:1.2px;color:#0f766e;background:#e8f6f4;border:1px solid #bfe1dd;border-radius:999px;padding:7px 10px}
 .admin-nav{justify-content:flex-start;overflow-x:auto;scrollbar-width:none;gap:4px}
@@ -1598,3 +1598,55 @@ body.proof-modal-open{overflow:hidden}
 .account-choice{padding:34px 0 80px}.account-choice-head{text-align:center;max-width:760px;margin:0 auto 28px}.account-choice-head h1{margin:8px 0 10px}.account-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;max-width:980px;margin:0 auto}.account-choice-card{display:block;padding:28px;border:1px solid #e4eceb;border-radius:26px;background:#fff;box-shadow:0 12px 35px rgba(15,118,110,.08);text-decoration:none;color:inherit}.account-choice-card:hover{transform:translateY(-2px)}.account-choice-icon{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;background:#e7f5f3;color:#0f766e;font-size:26px;font-weight:800;margin-bottom:20px}.account-choice-card h2{margin:8px 0}.account-choice-card p{color:#667575;line-height:1.65;min-height:78px}.account-choice-card small{display:block;text-align:center;margin-top:12px;color:#6b7777}.account-choice-card .btn{margin-top:8px}.business-choice .account-choice-icon{background:#eef5ff;color:#2563eb}
 @media (max-width:760px){.account-choice-grid{grid-template-columns:1fr}.account-choice-card p{min-height:auto}}
 .business-billing-banner{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:16px}.business-billing-banner h2{margin:4px 0}.business-budget-breakdown{margin-top:14px;border:1px solid var(--line);border-radius:14px;overflow:hidden}.business-budget-breakdown>div{display:flex;justify-content:space-between;gap:15px;padding:12px 14px;border-bottom:1px solid var(--line)}.business-budget-breakdown>div:last-child{border-bottom:0}.business-budget-breakdown span{color:var(--muted);font-size:11px}.business-budget-breakdown b{font-size:13px}.business-budget-breakdown .total{background:var(--soft)}.business-budget-breakdown .total b{font-size:18px;color:var(--brand)}.small-note{font-size:11px}.payment-card{max-width:720px;margin:0 auto}.payment-card h1{margin:6px 0 8px}.payment-method-note{display:flex;justify-content:space-between;gap:12px;padding:14px;margin:16px 0;border-radius:12px;background:var(--soft);font-size:12px}.payment-method-note span{color:var(--muted)}.text-danger{color:#b42318!important}@media(max-width:700px){.business-billing-banner{flex-direction:column;align-items:flex-start}.payment-method-note{flex-direction:column}.business-billing-banner .btn{width:100%}}
+
+/* =========================================================
+   TASKORA / WALLET PROFESSIONAL CARDS
+========================================================= */
+.worker-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:22px 0 28px}
+.worker-metric-card{display:flex;align-items:center;gap:13px;min-width:0;padding:18px;border:1px solid var(--line);border-radius:18px;background:#fff;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.worker-metric-card::after{content:"";position:absolute;right:-24px;top:-28px;width:82px;height:82px;border-radius:50%;background:var(--soft);opacity:.8}
+.worker-metric-icon{width:44px;height:44px;flex:0 0 44px;display:grid;place-items:center;border-radius:14px;background:#e8f6f4;color:var(--brand);font-size:20px;font-weight:900;position:relative;z-index:1}
+.worker-metric-card>div:last-child{min-width:0;position:relative;z-index:1}
+.worker-metric-card span{display:block;color:var(--muted);font-size:11px;font-weight:750}
+.worker-metric-card strong{display:block;margin-top:3px;font-size:23px;line-height:1.15;overflow-wrap:anywhere}
+.worker-metric-card small{display:block;margin-top:4px;color:var(--muted);font-size:10px}
+.worker-metric-card.available .worker-metric-icon,.wallet-summary-card.primary{background:#e8f6f4}
+.worker-metric-card.pending .worker-metric-icon{background:#fff7e6;color:#9a6700}
+.worker-metric-card.minimum .worker-metric-icon{background:#eef2ff;color:#4f46e5}
+.worker-metric-card.referral .worker-metric-icon{background:#fff7e6;color:#9a6700}
+.worker-metric-card.referral-pending .worker-metric-icon{background:#fff7e6;color:#9a6700}
+.worker-metric-card.referral-approved .worker-metric-icon{background:#e9f8ef;color:#137a3b}
+
+.wallet-summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:22px 0}
+.wallet-summary-card{padding:20px;border:1px solid var(--line);border-radius:18px;background:#fff;box-shadow:var(--shadow)}
+.wallet-summary-card.primary{background:linear-gradient(145deg,#e8f6f4,#fff)}
+.wallet-summary-card span{display:block;color:var(--muted);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
+.wallet-summary-card strong{display:block;font-size:27px;margin-top:5px;line-height:1.15}
+.wallet-summary-card small{display:block;color:var(--muted);font-size:10px;margin-top:5px}
+.wallet-layout{align-items:start}
+.wallet-withdraw-card,.wallet-history-card{min-width:0}
+.wallet-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.wallet-card-head h2{margin:5px 0 0}
+.wallet-badge{padding:5px 9px;border-radius:999px;background:#e8f6f4;color:var(--brand);font-size:10px;font-weight:800}
+.withdrawal-history{display:grid;gap:9px;margin-top:16px}
+.withdrawal-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px;border:1px solid var(--line);border-radius:13px;background:#fbfdfd}
+.withdrawal-row strong{display:block;font-size:14px}.withdrawal-row small{display:block;color:var(--muted);font-size:10px;margin-top:2px}
+.bank-account-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.bank-account-card,.bank-admin-card{border:1px solid var(--line);border-radius:17px;background:#fff;box-shadow:var(--shadow);padding:18px}
+.bank-account-top,.bank-admin-main{display:flex;align-items:center;gap:12px}
+.bank-icon{width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;border-radius:13px;background:#e8f6f4;color:var(--brand);font-weight:900}
+.bank-account-card h3,.bank-admin-card h3{margin:0 0 2px;font-size:15px}.bank-account-card p,.bank-admin-card p{margin:0;color:var(--muted);font-size:12px}
+.bank-account-name{margin:15px 0 10px!important}.bank-rejection-note{margin-top:10px;padding:9px 11px;border-radius:10px;background:#fff0ee;color:var(--danger);font-size:11px!important}
+.bank-admin-list{display:grid;gap:13px}.bank-admin-card{display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,.35fr) auto;gap:14px;align-items:center}.bank-admin-card small{display:block;color:var(--muted);font-size:10px;margin-top:3px}.bank-admin-actions{margin-top:0;justify-content:flex-end}
+.status.closed,.status.expired,.status.completed{background:#eef2ff;color:#4f46e5}
+.status.processing{background:#eef2ff;color:#4f46e5}
+.task-admin-top{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.task-owner{margin-top:10px;color:var(--muted);font-size:10px;font-weight:700}.task-admin-actions{display:flex;flex-wrap:wrap;gap:7px;justify-content:flex-end;align-items:center;min-width:190px}.status-form{display:flex;gap:5px;align-items:center;margin:0}.status-form select{width:auto;min-width:105px;margin:0;padding:8px 9px;font-size:11px}.task-admin-card .btn{white-space:nowrap}
+
+@media(max-width:900px){.worker-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.wallet-summary-grid{grid-template-columns:1fr 1fr}.bank-admin-card{grid-template-columns:1fr}.bank-admin-actions{justify-content:flex-start}}
+@media(max-width:600px){.worker-metrics{grid-template-columns:1fr 1fr;gap:10px}.worker-metric-card{padding:14px;gap:10px;border-radius:15px}.worker-metric-icon{width:38px;height:38px;flex-basis:38px;border-radius:12px}.worker-metric-card strong{font-size:18px}.worker-metric-card small{display:none}.wallet-summary-grid{grid-template-columns:1fr;gap:10px}.wallet-summary-card{padding:16px}.wallet-summary-card strong{font-size:24px}.bank-account-grid{grid-template-columns:1fr}.withdrawal-row{padding:11px}.task-admin-actions{width:100%;min-width:0;justify-content:stretch}.task-admin-actions>*{flex:1}.task-admin-actions .btn{width:100%}.status-form{flex:1}.status-form select{flex:1;width:100%}.bank-admin-actions{display:grid;grid-template-columns:1fr 1fr 1fr;width:100%}.bank-admin-actions>*{min-width:0}.bank-admin-actions .btn{width:100%}}
+@media(max-width:380px){.worker-metrics{grid-template-columns:1fr}.wallet-summary-card strong{font-size:22px}}
+
+button:disabled{opacity:.55;cursor:not-allowed}
+.admin-note-input{margin:0 0 6px;width:100%;padding:8px 9px;font-size:11px;border-radius:9px}
+.bank-admin-actions form:has(.admin-note-input){min-width:190px}
+@media(max-width:600px){.bank-admin-actions form:has(.admin-note-input){min-width:0}}

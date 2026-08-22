@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — TASKORA{% endblock %}
+{% block title %}Dashboard — TASKORA WORK{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
@@ -55,16 +55,19 @@
   </div>
   <div class="actions">
     <button class="btn ghost" type="button" onclick="navigator.clipboard && navigator.clipboard.writeText('{{ user.referral_code }}')">Copy</button>
-    <button class="btn" type="button" onclick="navigator.share ? navigator.share({title:'TASKORA',text:'Join TASKORA with my referral code {{ user.referral_code }}',url:'{{ request.host_url }}r/{{ user.referral_code }}'}) : navigator.clipboard.writeText('{{ request.host_url }}r/{{ user.referral_code }}')">Share</button>
+    <button class="btn" type="button" onclick="navigator.share ? navigator.share({title:'TASKORA WORK',text:'Join TASKORA WORK with my referral code {{ user.referral_code }}',url:'{{ request.host_url }}r/{{ user.referral_code }}'}) : navigator.clipboard.writeText('{{ request.host_url }}r/{{ user.referral_code }}')">Share</button>
   </div>
   <div class="referral-link">{{ request.host_url }}r/{{ user.referral_code }}</div>
-  <div class="grid two" style="margin-top:18px">
-    <div class="card"><span class="mini-label">PENDING</span><h3>{{ referral_pending }}</h3><p>Signed up but not yet activated.</p></div>
-    <div class="card"><span class="mini-label">APPROVED</span><h3>{{ referral_approved }}</h3><p>Completed ₦{{ "{:,}".format(activation_fee) }} activation. <strong>Reward: ₦{{ "{:,}".format(referral_reward) }}</strong></p></div>
+  <div class="referral-summary" aria-label="Referral summary">
+    <div class="referral-summary-card"><span>PENDING</span><strong>{{ referral_pending }}</strong></div>
+    <div class="referral-summary-card"><span>APPROVED</span><strong>{{ referral_approved }}</strong></div>
   </div>
-  <div class="table-wrap" style="margin-top:18px"><table><tr><th>Referral</th><th>Status</th><th>Reward</th></tr>
+  <div class="referral-details">
+    <div class="referral-details-title">Referral activity</div>
+    <div class="table-wrap"><table><tr><th>Referral</th><th>Status</th><th>Reward</th></tr>
   {% for r in referrals %}<tr><td>{{ r.full_name }}</td><td>{% if r.activated %}<span class="status approved">Approved</span>{% else %}<span class="status pending">Pending</span>{% endif %}</td><td>{% if r.activated %}₦{{ "{:,}".format(referral_reward) }}{% else %}—{% endif %}</td></tr>{% else %}<tr><td colspan="3">No referrals yet.</td></tr>{% endfor %}
   </table></div>
+  </div>
 </section>
 
 <section class="section">
